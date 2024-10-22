@@ -123,6 +123,10 @@ def generate_plot(state_initial):
     img.seek(0)
     return img
 
+@app.route('/robots.txt')
+def robots_txt():
+    return "fuck off"
+    
 @app.route('/')
 @app.route('/<state>')
 def index(state='ga'):
