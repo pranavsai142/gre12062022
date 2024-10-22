@@ -147,7 +147,7 @@ def main(args):
                 ensureFolderExists(state.lower())
     while(True):
         for STATE in STATES:
-            print("Reading state: " + STATE)
+            print("Reading state: " + STATE, flush=True)
             ensureFolderExists(STATE)
             timedelta = (datetime.datetime.now() - electionStart)
         # 	url = "https://www.reuters.com/graphics/USA-ELECTION/RESULTS/dwvkdgzdqpm/georgia/"
@@ -163,10 +163,10 @@ def main(args):
             repFile = open(STATE + "/repResults.txt", "a")
             repFile.write(str(timedelta.total_seconds()) + "," + str(repVotes) + "\n")
             repFile.close()
-            print("Writing to files state, delta, dem, rep:", STATE, timedelta.total_seconds(), demVotes, repVotes)
+            print("Writing to files state, delta, dem, rep:", STATE, timedelta.total_seconds(), demVotes, repVotes, flush=True)
             print()
-            time.sleep(random.randint(5, 10))
-        time.sleep(60)
+            time.sleep(random.randint(40, 60))
+        time.sleep(600)
         
 if __name__ == "__main__":
     entryPoint()

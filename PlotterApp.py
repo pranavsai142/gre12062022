@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, send_file
+from flask import Flask, render_template_string, send_file, url_for
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -6,6 +6,60 @@ import io
 import os
 
 app = Flask(__name__)
+
+# Dictionary mapping state names to their abbreviations
+states = {
+    "Alabama": "al",
+    "Alaska": "ak",
+    "Arizona": "az",
+    "Arkansas": "ar",
+    "California": "ca",
+    "Colorado": "co",
+    "Connecticut": "ct",
+    "Delaware": "de",
+    "Florida": "fl",
+    "Georgia": "ga",
+    "Hawaii": "hi",
+    "Idaho": "id",
+    "Illinois": "il",
+    "Indiana": "in",
+    "Iowa": "ia",
+    "Kansas": "ks",
+    "Kentucky": "ky",
+    "Louisiana": "la",
+    "Maine": "me",
+    "Maryland": "md",
+    "Massachusetts": "ma",
+    "Michigan": "mi",
+    "Minnesota": "mn",
+    "Mississippi": "ms",
+    "Missouri": "mo",
+    "Montana": "mt",
+    "Nebraska": "ne",
+    "Nevada": "nv",
+    "New Hampshire": "nh",
+    "New Jersey": "nj",
+    "New Mexico": "nm",
+    "New York": "ny",
+    "North Carolina": "nc",
+    "North Dakota": "nd",
+    "Ohio": "oh",
+    "Oklahoma": "ok",
+    "Oregon": "or",
+    "Pennsylvania": "pa",
+    "Rhode Island": "ri",
+    "South Carolina": "sc",
+    "South Dakota": "sd",
+    "Tennessee": "tn",
+    "Texas": "tx",
+    "Utah": "ut",
+    "Vermont": "vt",
+    "Virginia": "va",
+    "Washington": "wa",
+    "West Virginia": "wv",
+    "Wisconsin": "wi",
+    "Wyoming": "wy"
+}
 
 def animate(i, state_initial):
     """
@@ -33,7 +87,7 @@ def animate(i, state_initial):
     for line in demLines:
         if len(line) > 1:
             time, demVote = line.split(',')
-            times.append(float(time)/86400)  # Convert seconds to days
+            times.append(round(float(time)/86400, 2))  # Convert seconds to days
             demVotes.append(int(demVote))
     
     for line in repLines:
@@ -58,7 +112,7 @@ def generate_plot(state_initial):
     ax = fig.add_subplot(111)
     ax.plot(times, demVotes, label="Dem")
     ax.plot(times, repVotes, label="Rep")
-    ax.set_title(f'{state_initial.upper()} Runoff Results')
+    ax.set_title(f'{state_initial.upper()} Presidency Results')
     ax.set_xlabel('Days since election start')
     ax.set_ylabel('Vote Count')
     ax.legend()
@@ -73,24 +127,65 @@ def generate_plot(state_initial):
 @app.route('/<state>')
 def index(state='ga'):
     """
-    Render the landing page with the plot based on the state from the URL.
+    Render the landing page with the plot based on the state from the URL,
+    including a list of all states for navigation.
 
     Args:
     state (str): The state abbreviation from the URL, default to 'ga' if not provided.
 
     Returns:
-    str: Rendered HTML string with the plot image tag.
+    str: Rendered HTML string with the plot image tag and a state navigation list.
     """
     # Dynamically generate the src for the image based on the state
     plot_src = f"/plot/{state.lower()}"
+
+    # Generate HTML for the state links
+    state_links = '<ul>\n'
+    for full_state, abbr in states.items():
+        state_links += f'<li><a href="{url_for("index", state=abbr)}">{full_state}</a></li>\n'
+    state_links += '</ul>'
+
     return render_template_string('''
         <!doctype html>
-        <title>{{ state.upper() }} Runoff Results</title>
+        <title>{{ state.upper() }} Timeseries</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+            }
+            .content {
+                flex: 1;
+                padding: 20px;
+            }
+            footer {
+                background-color: #333;
+                color: white;
+                text-align: center;
+                padding: 10px;
+                font-size: 14px;
+            }
+            .footer-text {
+                margin: 0;
+            }
+            .footer-text span {
+                color: #ff6600; /* A vibrant orange for Grok */
+            }
+        </style>
         <body>
-            <h1>{{ state.upper() }} Runoff Results</h1>
+            <h1>{{ state.upper() }} Timeseries (updates every 10 min)</h1>
             <img src="{{ plot_src }}" />
+            <h2>Select Another State:</h2>
+            {{ state_links|safe }}
+            <footer>
+                <p class="footer-text">Brought to you by <span>The Internet Party</span></p>
+                <p class="footer-text">Powered by <span>Grok</span></p>
+            </footer>
         </body>
-    ''', state=state, plot_src=plot_src)
+    ''', state=state, plot_src=plot_src, state_links=state_links)
 
 @app.route('/plot/<state>')
 def plot(state):
