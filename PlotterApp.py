@@ -82,7 +82,7 @@ def animate(i, state_initial):
         with open(os.path.join(folder_path, 'repResults.txt'), 'r') as repFile:
             repLines = repFile.read().split('\n')
     except FileNotFoundError:
-        print(f"WARNING: One or more results files do not exist in {folder_path}!")
+        print(f"WARNING: One or more results files do not exist in {folder_path}!", flush=True)
         return times, demVotes, repVotes
     
     for line in demLines:
