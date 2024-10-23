@@ -8,6 +8,7 @@ import sys
 import os
 import random
 
+DATA_FOLDER = "/data/"
 def parseArguments():
     """
     Parse command-line arguments.
@@ -144,11 +145,11 @@ def main(args):
         for state in statesArgs:
             if(isValidStateInitial(state)):
                 STATES.append(state.lower())
-                ensureFolderExists(state.lower())
+                ensureFolderExists(DATA_FOLDER + state.lower())
     while(True):
         for STATE in STATES:
             print("Reading state: " + STATE, flush=True)
-            ensureFolderExists(STATE)
+            ensureFolderExists(DATA_FOLDER + STATE)
             timedelta = (datetime.datetime.now() - electionStart)
         # 	url = "https://www.reuters.com/graphics/USA-ELECTION/RESULTS/dwvkdgzdqpm/georgia/"
         # 	url_data = requests.get(url).text
@@ -157,10 +158,10 @@ def main(args):
         # 	url_data = open('results.txt','r').read()
             demVotes = getVotesABC(url_data, "democrat")
             repVotes = getVotesABC(url_data, "republican")
-            demFile = open(STATE + "/demResults.txt", "a")
+            demFile = open(DATA_FOLDER + STATE + "/demResults.txt", "a")
             demFile.write(str(timedelta.total_seconds()) + "," + str(demVotes) + "\n")
             demFile.close()
-            repFile = open(STATE + "/repResults.txt", "a")
+            repFile = open(DATA_FOLDER + STATE + "/repResults.txt", "a")
             repFile.write(str(timedelta.total_seconds()) + "," + str(repVotes) + "\n")
             repFile.close()
             print("Writing to files state, delta, dem, rep:", STATE, timedelta.total_seconds(), demVotes, repVotes, flush=True)

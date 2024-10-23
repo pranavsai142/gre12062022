@@ -6,7 +6,7 @@ import io
 import os
 
 app = Flask(__name__)
-
+DATA_FOLDER = "/data/"
 # Dictionary mapping state names to their abbreviations
 states = {
     "Alabama": "al",
@@ -74,6 +74,7 @@ def animate(i, state_initial):
     """
     times, demVotes, repVotes = [], [], []
     folder_path = os.path.join(state_initial.lower(), '')
+    folder_path = DATA_FOLDER + folder_path
 
     try:
         with open(os.path.join(folder_path, 'demResults.txt'), 'r') as demFile:
