@@ -146,7 +146,7 @@ def generate_delta(state_initial):
     ax = fig.add_subplot(111)
     ax.plot(offsetTimes, demDelta, label="Dem")
     ax.plot(offsetTimes, repDelta, label="Rep")
-    ax.set_title(f'{state_initial.upper()} Presidency Delta Change')
+    ax.set_title(f'{state_initial.upper()} Presidency Vote Delta')
     ax.set_xlabel('Days since election start')
     ax.set_ylabel('Average # of New Votes')
     ax.legend()
