@@ -6,8 +6,7 @@ import io
 import os
 import numpy as np
 
-import IndexPage
-import NotFoundPage
+import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage
 
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
@@ -199,6 +198,41 @@ def robots_txt():
 @app.route('/')
 def index():
     htmlString = IndexPage.render()
+    return htmlString
+
+@app.route('/about')
+def about():
+    htmlString = AboutPage.render()
+    return htmlString
+
+@app.route('/account')
+def account():
+    htmlString = AccountPage.render()
+    return htmlString
+    
+@app.route('/login')
+def login():
+    htmlString = LoginPage.render()
+    return htmlString
+
+@app.route('/policy')
+def policy():
+    htmlString = PolicyPage.render()
+    return htmlString
+
+@app.route('/register')
+def register():
+    htmlString = RegisterPage.render()
+    return htmlString
+
+@app.route('/reset')
+def reset():
+    htmlString = ResetPage.render()
+    return htmlString
+
+@app.route('/vote')
+def vote():
+    htmlString = VotePage.render()
     return htmlString
 
 @app.route('/monitor')
