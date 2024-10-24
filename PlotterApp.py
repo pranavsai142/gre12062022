@@ -1,10 +1,14 @@
-from flask import Flask, render_template_string, send_file, url_for
+from flask import Flask, render_template_string, send_file, url_for, redirect
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import io
 import os
 import numpy as np
+
+import IndexPage
+import NotFoundPage
+
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
 # Dictionary mapping state names to their abbreviations
@@ -154,13 +158,54 @@ def generate_delta(state_initial):
     img.seek(0)
     return img
 
+def isValidStateInitial(stateInitial):
+    """
+    Validates if the given two-letter initial represents a valid U.S. state.
+
+    Args:
+    stateInitial (str): A string representing a state initial (e.g., 'CA', 'ny', 'Al').
+
+    Returns:
+    bool: True if the initial is valid, False otherwise.
+
+    Raises:
+    ValueError: If the input is not exactly two letters.
+    """
+    
+    # List of valid two-letter state abbreviations
+    validStates = [
+        'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+        'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+        'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+    ]
+    
+    # Check if the input is two letters
+    if not (len(stateInitial) == 2 and stateInitial.isalpha()):
+        return False
+#         raise ValueError("State initial must be exactly two letters.")
+    
+    # Convert to uppercase for comparison
+    upperInitial = stateInitial.upper()
+    
+    # Check if the state initial exists in our list
+    return upperInitial in validStates
+
 @app.route('/robots.txt')
 def robots_txt():
     return "fuck off"
     
 @app.route('/')
-@app.route('/<state>')
-def index(state='ga'):
+def index():
+    htmlString = IndexPage.render()
+    return htmlString
+
+@app.route('/monitor')
+@app.route('/monitor/<state>')
+def monitor(state='ga'):
+    if(not isValidStateInitial(state)):
+        return NotFoundPage.render()
     """
     Render the landing page with the plot based on the state from the URL,
     including a list of all states for navigation.
@@ -177,7 +222,7 @@ def index(state='ga'):
     # Generate HTML for the state links
     state_links = '<ul>\n'
     for full_state, abbr in states.items():
-        state_links += f'<li><a href="{url_for("index", state=abbr)}">{full_state}</a></li>\n'
+        state_links += f'<li><a href="{url_for("monitor", state=abbr)}">{full_state}</a></li>\n'
     state_links += '</ul>'
 
     return render_template_string('''
@@ -217,7 +262,7 @@ def index(state='ga'):
             <h2>Select Another State:</h2>
             {{ state_links|safe }}
             <footer>
-                <p class="footer-text">Brought to you by <span>The Internet Party</span></p>
+                <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
