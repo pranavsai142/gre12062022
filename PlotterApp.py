@@ -4,7 +4,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import io
 import os
-
+import numpy as np
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
 # Dictionary mapping state names to their abbreviations
@@ -60,6 +60,7 @@ states = {
     "Wisconsin": "wi",
     "Wyoming": "wy"
 }
+
 
 def animate(i, state_initial):
     """
@@ -123,6 +124,35 @@ def generate_plot(state_initial):
     FigureCanvas(fig).print_png(img)
     img.seek(0)
     return img
+    
+def generate_delta(state_initial):
+    """
+    Generate a plot based on the state initial.
+
+    Args:
+    state_initial (str): The state abbreviation to generate the plot for.
+
+    Returns:
+    io.BytesIO: A BytesIO object containing the plot as a PNG image.
+    """
+    times, demVotes, repVotes = animate(0, state_initial)
+    demDelta = np.diff(demVotes)
+    repDelta = np.diff(repVotes)
+    offsetTimes = times[1:]
+    fig = Figure()
+    ax = fig.add_subplot(111)
+    ax.plot(offsetTimes, demDelta, label="Dem")
+    ax.plot(offsetTimes, repDelta, label="Rep")
+    ax.set_title(f'{state_initial.upper()} Presidency Delta Change')
+    ax.set_xlabel('Days since election start')
+    ax.set_ylabel('Average # of New Votes')
+    ax.legend()
+
+    # Convert plot to PNG image
+    img = io.BytesIO()
+    FigureCanvas(fig).print_png(img)
+    img.seek(0)
+    return img
 
 @app.route('/robots.txt')
 def robots_txt():
@@ -143,7 +173,7 @@ def index(state='ga'):
     """
     # Dynamically generate the src for the image based on the state
     plot_src = f"/plot/{state.lower()}"
-
+    delta_src = f"/delta/{state.lower()}"
     # Generate HTML for the state links
     state_links = '<ul>\n'
     for full_state, abbr in states.items():
@@ -183,6 +213,7 @@ def index(state='ga'):
         <body>
             <h1>{{ state.upper() }} Timeseries (updates every 10 min)</h1>
             <img src="{{ plot_src }}" />
+            <img src="{{ delta_src }}" />
             <h2>Select Another State:</h2>
             {{ state_links|safe }}
             <footer>
@@ -190,7 +221,7 @@ def index(state='ga'):
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', state=state, plot_src=plot_src, state_links=state_links)
+    ''', state=state, plot_src=plot_src, delta_src=delta_src, state_links=state_links)
 
 @app.route('/plot/<state>')
 def plot(state):
@@ -204,6 +235,20 @@ def plot(state):
     Response: A Flask response object containing the plot image.
     """
     img = generate_plot(state.lower())
+    return send_file(img, mimetype='image/png')
+    
+@app.route('/delta/<state>')
+def delta(state):
+    """
+    Route to serve the delta image for a given state.
+
+    Args:
+    state (str): The state abbreviation to fetch data for.
+
+    Returns:
+    Response: A Flask response object containing the plot image.
+    """
+    img = generate_delta(state.lower())
     return send_file(img, mimetype='image/png')
 
 if __name__ == '__main__':
