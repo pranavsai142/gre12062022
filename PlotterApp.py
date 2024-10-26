@@ -193,9 +193,9 @@ def isValidStateInitial(stateInitial):
     return upperInitial in validStates
 
 # Initialize Firebase Admin SDK (you need to set up your Firebase project first)
-cred = credentials.Certificate("/Volumes/ssd/downloads/theinternetparty-5b902-firebase-adminsdk-qlzzx-8c18a98bd5.json")
+cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-8c18a98bd5.json")
 initialize_app(cred)
-app.secret_key = "test"
+app.secret_key = os.urandom(12).hex()
 
 @app.route('/validate-token', methods=['POST'])
 def validate_token():
