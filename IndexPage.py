@@ -4,6 +4,9 @@ def render():
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+        <script src="{{ url_for('static', filename='js/login.js') }}"></script>
         <style>
             body {
                 font-family: Arial, sans-serif;
