@@ -17,26 +17,30 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 
 // Function to handle login
-function handleLogin() {
+function handleRegister() {
     //Clear errorMessage span
     document.getElementById("errorMessage").textContent=""
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-
-    auth.signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-        // Signed in 
-        var user = userCredential.user;
-        console.log("User signed in:", user);
-        // Here you might want to notify the server or update UI
-    })
-    .catch((error) => {
-        var errorCode = error.code;
-        var errorMessage = error.message;
-        console.error("Login error:", errorCode, errorMessage);
-        document.getElementById("errorMessage").textContent=errorMessage
-        // Display error to user
-    });
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    if(password != confirmPassword) {
+        document.getElementById("errorMessage").textContent="Passwords do not match."
+    } else {
+        auth.createUserWithEmailAndPassword(email, password)
+        .then((userCredential) => {
+            // Signed in 
+            var user = userCredential.user;
+            console.log("User registered:", user);
+            // Here you might want to notify the server or update UI
+        })
+        .catch((error) => {
+            var errorCode = error.code;
+            var errorMessage = error.message;
+            console.error("Register error:", errorCode, errorMessage);
+            document.getElementById("errorMessage").textContent=errorMessage
+            // Display error to user
+        });
+    }
     firebase.auth().onAuthStateChanged(user => {
         if (user) {
             user.getIdToken().then(idToken => {
@@ -67,4 +71,4 @@ function handleLogin() {
 }
 
 // Add event listener to the login button
-document.getElementById('loginButton').addEventListener('click', handleLogin);
+document.getElementById('registerButton').addEventListener('click', handleRegister);

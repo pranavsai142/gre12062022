@@ -9,6 +9,7 @@ requests = "*"
 datetime = "*"
 packaging = "*"
 flask = "*"
+firebase-admin = "*"
 
 [dev-packages]
 

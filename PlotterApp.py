@@ -1,10 +1,11 @@
-from flask import Flask, render_template_string, send_file, url_for, redirect
+from flask import Flask, render_template_string, send_file, url_for, redirect, session, request
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import io
 import os
 import numpy as np
+from firebase_admin import auth, credentials, initialize_app
 
 import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage
 
@@ -191,55 +192,84 @@ def isValidStateInitial(stateInitial):
     # Check if the state initial exists in our list
     return upperInitial in validStates
 
+# Initialize Firebase Admin SDK (you need to set up your Firebase project first)
+cred = credentials.Certificate("/Volumes/ssd/downloads/theinternetparty-5b902-firebase-adminsdk-qlzzx-8c18a98bd5.json")
+initialize_app(cred)
+app.secret_key = "test"
+
+@app.route('/validate-token', methods=['POST'])
+def validate_token():
+    data = request.get_json()
+    id_token = data.get('idToken')
+    
+    try:
+        # Verify the token and decode it
+        decoded_token = auth.verify_id_token(id_token)
+        print(decoded_token, flush=True)
+        
+        # Start a session for the user
+        session["user"] = decoded_token
+        print("session[user]:", session["user"], flush=True)
+        # Redirect to another page after successful validation
+        return redirect(url_for('account'))  # Replace 'dashboard' with your actual route name
+    except ValueError as e:
+        # Invalid token
+        return jsonify({"authenticated": False, "error": str(e)}), 401
+
 @app.route('/robots.txt')
 def robots_txt():
     return "fuck off"
     
 @app.route('/')
 def index():
-    htmlString = IndexPage.render()
+    htmlString = IndexPage.render(session.get("user"))
     return htmlString
 
 @app.route('/about')
 def about():
-    htmlString = AboutPage.render()
+    htmlString = AboutPage.render(session.get("user"))
     return htmlString
 
 @app.route('/account')
 def account():
-    htmlString = AccountPage.render()
+    htmlString = AccountPage.render(session.get("user"))
     return htmlString
     
 @app.route('/login')
 def login():
-    htmlString = LoginPage.render()
+    htmlString = LoginPage.render(session.get("user"))
     return htmlString
 
 @app.route('/policy')
 def policy():
-    htmlString = PolicyPage.render()
+    htmlString = PolicyPage.render(session.get("user"))
     return htmlString
 
 @app.route('/register')
 def register():
-    htmlString = RegisterPage.render()
+    htmlString = RegisterPage.render(session.get("user"))
     return htmlString
 
 @app.route('/reset')
 def reset():
-    htmlString = ResetPage.render()
+    htmlString = ResetPage.render(session.get("user"))
     return htmlString
 
 @app.route('/vote')
 def vote():
-    htmlString = VotePage.render()
+    htmlString = VotePage.render(session.get("user"))
     return htmlString
+    
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
 
 @app.route('/monitor')
 @app.route('/monitor/<state>')
 def monitor(state='ga'):
     if(not isValidStateInitial(state)):
-        return NotFoundPage.render()
+        return NotFoundPage.render(session.get("user"))
     """
     Render the landing page with the plot based on the state from the URL,
     including a list of all states for navigation.
