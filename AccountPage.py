@@ -1,6 +1,9 @@
 from flask import Flask, render_template_string, redirect, url_for
+import User
 
 def render(user):
+    if(not User.validateUser(user)):
+        user = None
     if user is None:
         return redirect(url_for('login'))
     return render_template_string('''

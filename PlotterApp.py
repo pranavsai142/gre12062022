@@ -11,6 +11,7 @@ import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, R
 
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
+DATA_FOLDER = "/Volumes/ssd/downloads/"
 # Dictionary mapping state names to their abbreviations
 states = {
     "Alabama": "al",

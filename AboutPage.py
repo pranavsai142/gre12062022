@@ -1,6 +1,9 @@
 from flask import Flask, render_template_string
+import User
 
 def render(user):
+    if(not User.validateUser(user)):
+        user = None
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>

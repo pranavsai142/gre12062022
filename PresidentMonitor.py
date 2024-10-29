@@ -153,7 +153,7 @@ def main(args):
             timedelta = (datetime.datetime.now() - electionStart)
         # 	url = "https://www.reuters.com/graphics/USA-ELECTION/RESULTS/dwvkdgzdqpm/georgia/"
         # 	url_data = requests.get(url).text
-            url = "https://abcnews.go.com/widgets/generalstateresults?chamber=president&stateAbbrev=" + STATE + "&year=2020"
+            url = "https://abcnews.go.com/widgets/generalstateresults?chamber=president&stateAbbrev=" + STATE + "&year=2024"
             url_data = requests.get(url).text
         # 	url_data = open('results.txt','r').read()
             demVotes = getVotesABC(url_data, "democrat")

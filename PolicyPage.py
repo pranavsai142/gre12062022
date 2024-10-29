@@ -1,6 +1,9 @@
 from flask import Flask, render_template_string
+import User
 
 def render(user):
+    if(not User.validateUser(user)):
+        user = None
 #     Instaed of a conditonal inside the HTML, do a conditional outside the 
 #   render string and assign to a varaible that always gets displayed
     if user is not None:
