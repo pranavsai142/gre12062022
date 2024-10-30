@@ -6,11 +6,12 @@ import io
 import os
 import numpy as np
 from firebase_admin import auth, credentials, initialize_app, db
+from datetime import datetime
 
-import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage
-from Database import Database
+import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage
 from Policy import Policy
 import User
+import Database
 
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
@@ -201,7 +202,6 @@ cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-ad
 initialize_app(cred, {
     'databaseURL': 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
 })
-database = Database()
 app.secret_key = os.urandom(12).hex()
 
 @app.route('/validate-token', methods=['POST'])
@@ -226,19 +226,44 @@ def validate_token():
 @app.route("/create-draft", methods=["POST"])
 def create_draft():
     data = request.get_json()
-    policyTitle = data.get("title")
-    policyDescription = data.get("description")
-    policyType = Policy.DRAFT
+    policyData["title"] = data.get("title")
+    policyData["description"] = data.get("description")
+    policyData["type"] = Policy.DRAFT
     sessionUserData = session.get("user")
-    policyUserId = None
+    currentTimestamp = datetime.now().timestamp()
+    policyData["created"] = currentTimestamp
+    policyData["updated"] = currentTimestamp
+    policyData["userId"] = None
     if(User.validateUser(sessionUserData)):
-        policyUserId = sessionUserData["uid"]
-        policy = Policy(policyUserId, policyType, policyTitle, policyDescription)
-        database.submitDraftPolicy(policy)
+        policyData["userId"] = sessionUserData["uid"]
+        policy = Policy(policyUserId, policyData)
+        Database.submitDraftPolicy(policy)
         return jsonify({"success": True})
     else:
         return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
 
+
+@app.route("/update-draft", methods=["POST"])
+def update_draft():
+    data = request.get_json()
+    policyData = {}
+    policyId = data.get("id")
+    policyData["title"] = data.get("title")
+    policyData["description"] = data.get("description")
+    policyData["type"] = Policy.DRAFT
+    sessionUserData = session.get("user")
+    policyData["userId"] = None
+    currentTimestamp = datetime.now().timestamp()
+    policyData["created"] = currentTimestamp
+    policyData["updated"] = currentTimestamp
+    if(User.validateUser(sessionUserData)):
+        policyData["userId"] = sessionUserData["uid"]
+        policy = Policy(policyId, policyData)
+        print("Updating policy", policy.toDictionary())
+        Database.updateDraftPolicy(policy)
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
 
 def create_draft():
     data = request.get_json()
@@ -269,12 +294,17 @@ def login():
 
 @app.route('/policy')
 def policy():
-    htmlString = PolicyPage.render(session.get("user"), database)
+    htmlString = PolicyPage.render(session.get("user"))
     return htmlString
     
 @app.route('/draft')
 def draft():
     htmlString = DraftPage.render(session.get("user"))
+    return htmlString
+    
+@app.route('/detail/<policyId>')
+def detail(policyId):
+    htmlString = DetailPage.render(session.get("user"), policyId)
     return htmlString
 
 @app.route('/register')

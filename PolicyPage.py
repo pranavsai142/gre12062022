@@ -1,7 +1,8 @@
 from flask import Flask, render_template_string
 import User
+import Database
 
-def render(user, database):
+def render(user):
     if(not User.validateUser(user)):
         user = None
 #     Instaed of a conditonal inside the HTML, do a conditional outside the 
@@ -11,7 +12,7 @@ def render(user, database):
     else:
         body = 'Not logged in'
         
-    policies = database.getCanidatePolicies()
+    policies = Database.getCanidatePolicies()
     for policy in policies:
         body += policy.getTitle()
     return render_template_string('''
