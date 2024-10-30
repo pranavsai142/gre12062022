@@ -1,13 +1,16 @@
-from flask import Flask, render_template_string, send_file, url_for, redirect, session, request
+from flask import Flask, render_template_string, send_file, url_for, redirect, session, request, jsonify
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 from matplotlib.figure import Figure
 import io
 import os
 import numpy as np
-from firebase_admin import auth, credentials, initialize_app
+from firebase_admin import auth, credentials, initialize_app, db
 
-import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage
+import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage
+from Database import Database
+from Policy import Policy
+import User
 
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
@@ -195,7 +198,10 @@ def isValidStateInitial(stateInitial):
 
 # Initialize Firebase Admin SDK (you need to set up your Firebase project first)
 cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-8c18a98bd5.json")
-initialize_app(cred)
+initialize_app(cred, {
+    'databaseURL': 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
+})
+database = Database()
 app.secret_key = os.urandom(12).hex()
 
 @app.route('/validate-token', methods=['POST'])
@@ -206,16 +212,36 @@ def validate_token():
     try:
         # Verify the token and decode it
         decoded_token = auth.verify_id_token(id_token)
-        print(decoded_token, flush=True)
+#         print(decoded_token, flush=True)
         
         # Start a session for the user
         session["user"] = decoded_token
-        print("session[user]:", session["user"], flush=True)
+#         print("session[user]:", session["user"], flush=True)
         # Redirect to another page after successful validation
         return redirect(url_for('account'))  # Replace 'dashboard' with your actual route name
     except ValueError as e:
         # Invalid token
         return jsonify({"authenticated": False, "error": str(e)}), 401
+
+@app.route("/create-draft", methods=["POST"])
+def create_draft():
+    data = request.get_json()
+    policyTitle = data.get("title")
+    policyDescription = data.get("description")
+    policyType = Policy.DRAFT
+    sessionUserData = session.get("user")
+    policyUserId = None
+    if(User.validateUser(sessionUserData)):
+        policyUserId = sessionUserData["uid"]
+        policy = Policy(policyUserId, policyType, policyTitle, policyDescription)
+        database.submitDraftPolicy(policy)
+        return jsonify({"success": True})
+    else:
+        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
+
+
+def create_draft():
+    data = request.get_json()
 
 @app.route('/robots.txt')
 def robots_txt():
@@ -243,7 +269,12 @@ def login():
 
 @app.route('/policy')
 def policy():
-    htmlString = PolicyPage.render(session.get("user"))
+    htmlString = PolicyPage.render(session.get("user"), database)
+    return htmlString
+    
+@app.route('/draft')
+def draft():
+    htmlString = DraftPage.render(session.get("user"))
     return htmlString
 
 @app.route('/register')

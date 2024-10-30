@@ -1,19 +1,15 @@
 from flask import Flask, render_template_string
 import User
 
-def render(user, database):
+def render(user):
     if(not User.validateUser(user)):
         user = None
 #     Instaed of a conditonal inside the HTML, do a conditional outside the 
 #   render string and assign to a varaible that always gets displayed
     if user is not None:
-        body = "hi user " + user["email"]
+        body = "draft policy: submission user " + user["email"]
     else:
         body = 'Not logged in'
-        
-    policies = database.getCanidatePolicies()
-    for policy in policies:
-        body += policy.getTitle()
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>
@@ -71,9 +67,20 @@ def render(user, database):
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item">{{ 'Account' if user else 'Login' }}</a>
             </div>
-            <h2>Policy</h2>
-            <span><a href="{{ url_for('draft') }}">Draft Policy</a></span>
+            <h2>Draft</h2>
             {{ body }}
+            <div class="content">
+                <form id="draftForm">
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" required><br><br>
+        
+                    <label for="description">Description:</label>
+                    <textarea id="description" required></textarea><br><br>
+        
+                    <button type="submit">Submit Draft</button>
+                </form>
+            </div>
+            <script src="{{ url_for('static', filename='js/draft.js') }}"></script>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
