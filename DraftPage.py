@@ -9,7 +9,7 @@ def render(user):
 #   render string and assign to a varaible that always gets displayed
     if user is not None:
         body = "draft policy: submission user " + user["email"]
-        drafts = Database.getDraftPolicies(user["uid"])
+        drafts = Database.getDraftPolicies(user)
 #         for policy in policies:
 #             body += policy.getTitle()
     else:
@@ -129,7 +129,7 @@ def render(user):
                     <button type="submit">Save Draft</button>
                 </form>
             </div>
-            <script src="{{ url_for('static', filename='js/detail.js') }}"></script>
+            <script src="{{ url_for('static', filename='js/draft.js') }}"></script>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>

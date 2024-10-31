@@ -7,14 +7,9 @@ def render(user):
         user = None
 #     Instaed of a conditonal inside the HTML, do a conditional outside the 
 #   render string and assign to a varaible that always gets displayed
-    if user is not None:
-        body = "hi user " + user["email"]
-    else:
-        body = 'Not logged in'
         
-    policies = Database.getCanidatePolicies()
-    for policy in policies:
-        body += policy.getTitle()
+    canidates = Database.getCanidatePolicies()
+    policies = Database.getOfficialPolicies()
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>
@@ -72,12 +67,30 @@ def render(user):
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item">{{ 'Account' if user else 'Login' }}</a>
             </div>
-            <h2>Policy</h2>
-            <span><a href="{{ url_for('draft') }}">Draft Policy</a></span>
-            {{ body }}
+            <div id="content">
+                <span><a href="{{ url_for('draft') }}">Draft Policy</a></span>
+                <h2>Policy</h2><br>
+                <div class="canidate-list">
+                    <span>Canidate Policies</span><br>
+                    {% for canidate in canidates %}
+                        <div class="canidate-item">
+                            <a href="{{ url_for('detail', policyId=canidate.policyId) }}">{{ canidate.policyTitle }}</a>
+                        </div>
+                    {% endfor %}
+                    <span>Canidate Amendments</span><br>
+                </div>
+                <div class="official-list">
+                    <span>Official Policies</span><br>
+                    {% for policy in policies %}
+                        <div class="official-item">
+                            <a href="{{ url_for('detail', policyId=policy.policyId) }}">{{ policy.policyTitle }}</a>
+                        </div>
+                    {% endfor %}
+                </div>
+            <div>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user, body=body)
+    ''', user=user, canidates=canidates, policies=policies)

@@ -12,14 +12,17 @@ class Policy:
 #         self.policyTitle = policyTitle
 #         self.policyDescription = policyDescription
 
+# Use .get() for a reason. Returns None, not an error
+# https://stackoverflow.com/questions/6130768/return-a-default-value-if-a-dictionary-key-is-not-available
     def __init__(self, policyId, policyData):
         self.policyId = policyId
-        self.userId = policyData["userId"]
-        self.policyType = policyData["type"]
-        self.policyTitle = policyData["title"]
-        self.policyDescription = policyData["description"]
-        self.createdTimestamp = policyData["created"]
-        self.updatedTimestamp = policyData["updated"]
+        self.userId = policyData.get("userId")
+        self.policyType = policyData.get("type")
+        self.policyTitle = policyData.get("title")
+        self.policyDescription = policyData.get("description")
+        self.createdTimestamp = policyData.get("created")
+        self.updatedTimestamp = policyData.get("updated")
+        self.submittedTimestamp = policyData.get("submitted")
     
     def getTitle(self):
         return self.policyTitle
@@ -39,11 +42,15 @@ class Policy:
     def getUpdatedDate(self):
         return datetime.fromtimestamp(self.updatedTimestamp, timezone.utc).strftime("%m/%d/%y %H:%M:%S %Z")
         
-    def validateForSubmission(self):
+            
+    def validateForSubmission(self, userId):
 #     Validate that a policy can be submitted
 #         if(userId == None):
 #             raise ValueError("Can't save policy. User not logged in.")
-        if(self.policyType == Policy.DRAFT and self.userId != None):
+        if(self.policyType == Policy.DRAFT and self.userId == userId):
+#         If validated for submission, set submitted timestamp and policyType to canidate
+            self.submittedTimestamp = datetime.now().timestamp()
+            self.policyType = Policy.CANIDATE
             return True
         else:
             return False
@@ -63,4 +70,5 @@ class Policy:
         value["description"] = self.policyDescription
         value["created"] = self.createdTimestamp
         value["updated"] = self.updatedTimestamp
+        value["submitted"] = self.submittedTimestamp
         return value

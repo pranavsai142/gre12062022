@@ -7,6 +7,7 @@ import os
 import numpy as np
 from firebase_admin import auth, credentials, initialize_app, db
 from datetime import datetime
+import uuid
 
 import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage
 from Policy import Policy
@@ -226,6 +227,7 @@ def validate_token():
 @app.route("/create-draft", methods=["POST"])
 def create_draft():
     data = request.get_json()
+    policyData = {}
     policyData["title"] = data.get("title")
     policyData["description"] = data.get("description")
     policyData["type"] = Policy.DRAFT
@@ -236,9 +238,12 @@ def create_draft():
     policyData["userId"] = None
     if(User.validateUser(sessionUserData)):
         policyData["userId"] = sessionUserData["uid"]
-        policy = Policy(policyUserId, policyData)
-        Database.submitDraftPolicy(policy)
-        return jsonify({"success": True})
+        policyId = uuid.uuid4().hex
+        policy = Policy(policyId, policyData)
+        if(Database.createDraftPolicy(policy)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
     else:
         return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
 
@@ -260,8 +265,24 @@ def update_draft():
         policyData["userId"] = sessionUserData["uid"]
         policy = Policy(policyId, policyData)
         print("Updating policy", policy.toDictionary())
-        Database.updateDraftPolicy(policy)
-        return jsonify({"success": True})
+        if(Database.updateDraftPolicy(policy)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
+    else:
+        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
+        
+@app.route("/submit-draft", methods=["POST"])
+def submit_draft():
+    data = request.get_json()
+    policyId = data.get("id")
+    sessionUserData = session.get("user")
+    if(User.validateUser(sessionUserData)):
+        print("Submitting policy", policyId)
+        if(Database.submitDraftPolicy(sessionUserData, policyId)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
         return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
 

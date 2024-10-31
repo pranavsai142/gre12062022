@@ -1,11 +1,15 @@
 from flask import Flask, render_template_string, redirect, url_for
 import User
+import Database
 
 def render(user):
     if(not User.validateUser(user)):
         user = None
     if user is None:
         return redirect(url_for('login'))
+    drafts = Database.getDraftPolicies(user)
+    canidates = Database.getCanidatePoliciesForUser(user)
+    policies = Database.getOfficialPoliciesForUser(user)
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>
@@ -63,12 +67,42 @@ def render(user):
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item.active">{{ 'Account' if user else 'Login' }}</a>
             </div>
-            <h2>Account</h2>
-            <div>User Id: {{ user }}</div>
+            <div class="content">
+                <h2>Account</h2>
+                <div>User Info: {{ user }}</div>
+                <h2>My Policies and Amendments</h2>
+                <div class="draft-list">
+                    <span>Draft Policies</span><br>
+                    {% for draft in drafts %}
+                        <div class="draft-item">
+                            <a href="{{ url_for('detail', policyId=draft.policyId) }}">{{ draft.policyTitle }}</a>
+                        </div>
+                    {% endfor %}
+                    <span>Draft Amendments</span><br>
+                </div>
+                <div class="canidate-list">
+                    <span>Canidate Policies</span><br>
+                    {% for canidate in canidates %}
+                        <div class="canidate-item">
+                            <a href="{{ url_for('detail', policyId=canidate.policyId) }}">{{ canidate.policyTitle }}</a>
+                        </div>
+                    {% endfor %}
+                    <span>Canidate Amendments</span><br>
+                </div>
+                <div class="official-list">
+                    <span>Official Policies</span><br>
+                    {% for policy in policies %}
+                        <div class="policy-item">
+                            <a href="{{ url_for('detail', policyId=policy.policyId) }}">{{ policy.policyTitle }}</a>
+                        </div>
+                    {% endfor %}
+                    <span>Official Amendments</span><br>
+                </div>
+            </div>
             <a href="{{ url_for('logout') }}">logout</a>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user)
+    ''', user=user, drafts=drafts, canidates=canidates, policies=policies)

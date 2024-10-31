@@ -5,6 +5,41 @@ from Policy import Policy
 
 # This page is for showing a view of all the properties of any type of policy.
 # This page will also house functionality for policy operations
+# Nones
+# Center draft Form on screen. Thanks grok. Its the margin thing
+            #draftForm {
+#                 max-width: 600px; /* Or whatever max-width you want */
+#                 margin: 0 auto;  /* Centers the form if it's narrower than its container */
+#             }
+# More grok beauty tips
+
+# /* 
+#             #draftForm button {
+#                 flex: 1;
+#                 margin: 0 5px;
+#                 padding: 10px 20px;
+#                 border: none;
+#                 cursor: pointer;
+#                 background-color: #4CAF50;
+#                 color: white;
+#             }
+#  */
+# 
+# /* 
+#             #draftForm button:hover {
+#                 background-color: #45a049;
+#             }
+# 
+#             #draftForm button[type="submit"][value="submit"] {
+#                 background-color: #008CBA;
+#             }
+# 
+#             #draftForm button[type="submit"][value="submit"]:hover {
+#                 background-color: #0077a8;
+#             }
+#  */
+
+
 def render(user, policyId):
     
     if(not User.validateUser(user)):
@@ -43,6 +78,27 @@ def render(user, policyId):
                 flex: 1;
                 padding: 20px;
             }
+            .button-container {
+                display: flex;
+                justify-content: space-between;
+                width: 100%; /* Adjust as needed */
+            }
+            #draftForm {
+                max-width: 600px;
+            }
+
+            #draftForm label, #draftForm input, #draftForm textarea {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .button-group {
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+            }
+
             footer {
                 background-color: #333;
                 color: white;
@@ -98,15 +154,18 @@ def render(user, policyId):
                         <span>Created: {{ policy.getCreatedDate() }}</span><br>
                         <span>Updated: {{ policy.getUpdatedDate() }}</span><br><br>
                         {% if policy.policyType == "draft" %}
-                            <form id="draftForm">
-                                <label for="title">Title:</label><br>
-                                <input type="text" id="title" required value="{{ policy.getTitle() }}"><br><br>
-    
-                                <label for="description">Description:</label><br>
-                                <textarea id="description" required>{{ policy.getDescription() }}</textarea><br><br>
-    
-                                <button type="submit">Save Draft</button>
-                            </form>
+                        <form id="draftForm">
+                            <label for="title">Title:</label><br>
+                            <input type="text" id="title" required value="{{ policy.getTitle() }}"><br><br>
+
+                            <label for="description">Description:</label><br>
+                            <textarea id="description" required>{{ policy.getDescription() }}</textarea><br><br>
+
+                            <div class="button-group">
+                                <button type="button" id="saveDraft">Save Draft</button>
+                                <button type="button" id="submitDraft">Submit Draft</button>
+                            </div>
+                        </form>
                         {% endif %}
                     </div>
             {% else %}
