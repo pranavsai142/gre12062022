@@ -9,8 +9,9 @@ from firebase_admin import auth, credentials, initialize_app, db
 from datetime import datetime
 import uuid
 
-import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage
+import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage, DraftAmendmentPage, DetailAmendmentPage
 from Policy import Policy
+from Amendment import Amendment
 import User
 import Database
 
@@ -270,7 +271,21 @@ def update_draft():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't update draft policy. No user logged in."}), 500
+        
+@app.route("/remove-draft", methods=["POST"])
+def remove_draft():
+    data = request.get_json()
+    policyId = data.get("id")
+    sessionUserData = session.get("user")
+    if(User.validateUser(sessionUserData)):
+        print("Submitting policy", policyId)
+        if(Database.removeDraftPolicy(sessionUserData, policyId)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
+    else:
+        return jsonify({"success": False, "error": "Can't remove draft policy. No user logged in."}), 500
         
 @app.route("/submit-draft", methods=["POST"])
 def submit_draft():
@@ -284,10 +299,86 @@ def submit_draft():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
+        return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 500
+        
+@app.route("/create-draft-amendment", methods=["POST"])
+def create_draft_amendment():
+    data = request.get_json()
+    amendmentData = {}
+    amendmentData["policyId"] = data.get("policyId")
+    amendmentData["title"] = data.get("title")
+    amendmentData["description"] = data.get("description")
+    amendmentData["type"] = Amendment.DRAFT
+    sessionUserData = session.get("user")
+    currentTimestamp = datetime.now().timestamp()
+    amendmentData["created"] = currentTimestamp
+    amendmentData["updated"] = currentTimestamp
+    amendmentData["userId"] = None
+    if(User.validateUser(sessionUserData)):
+        amendmentData["userId"] = sessionUserData["uid"]
+        amendmentId = uuid.uuid4().hex
+        amendment = Amendment(amendmentId, amendmentData)
+        if(Database.createDraftAmendment(amendment)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
+    else:
         return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
 
-def create_draft():
+
+@app.route("/update-draft-amendment", methods=["POST"])
+def update_draft_amendment():
     data = request.get_json()
+    amendmentData = {}
+    amendmentId = data.get("id")
+    amendmentData["policyId"] = data.get("policyId")
+    amendmentData["title"] = data.get("title")
+    amendmentData["description"] = data.get("description")
+    amendmentData["type"] = Amendment.DRAFT
+    sessionUserData = session.get("user")
+    currentTimestamp = datetime.now().timestamp()
+    amendmentData["created"] = currentTimestamp
+    amendmentData["updated"] = currentTimestamp
+    amendmentData["userId"] = None
+    if(User.validateUser(sessionUserData)):
+        amendmentData["userId"] = sessionUserData["uid"]
+        amendment = Amendment(amendmentId, amendmentData)
+        if(Database.updateDraftAmendment(amendment)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
+    else:
+        return jsonify({"success": False, "error": "Can't update draft policy. No user logged in."}), 500
+        
+@app.route("/remove-draft-amendment", methods=["POST"])
+def remove_draft_amendment():
+    data = request.get_json()
+    amendmentId = data.get("id")
+    sessionUserData = session.get("user")
+    if(User.validateUser(sessionUserData)):
+        print("Removing amendment", amendmentId)
+        if(Database.removeDraftAmendment(sessionUserData, amendmentId)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
+    else:
+        return jsonify({"success": False, "error": "Can't remove draft policy. No user logged in."}), 500
+        
+        
+@app.route("/submit-draft-amendment", methods=["POST"])
+def submit_draft_amendment():
+    data = request.get_json()
+    amendmentId = data.get("id")
+    sessionUserData = session.get("user")
+    if(User.validateUser(sessionUserData)):
+        print("Submitting amendment", amendmentId)
+        if(Database.submitDraftAmendment(sessionUserData, amendmentId)):
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
+    else:
+        return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 500
+
 
 @app.route('/robots.txt')
 def robots_txt():
@@ -323,9 +414,19 @@ def draft():
     htmlString = DraftPage.render(session.get("user"))
     return htmlString
     
+@app.route('/draft/amendment/<policyId>')
+def draft_amendment(policyId):
+    htmlString = DraftAmendmentPage.render(session.get("user"), policyId)
+    return htmlString
+    
 @app.route('/detail/<policyId>')
 def detail(policyId):
     htmlString = DetailPage.render(session.get("user"), policyId)
+    return htmlString
+
+@app.route('/detail/amendment/<amendmentId>')
+def detail_amendment(amendmentId):
+    htmlString = DetailAmendmentPage.render(session.get("user"), amendmentId)
     return htmlString
 
 @app.route('/register')

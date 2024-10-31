@@ -4,6 +4,7 @@ class Policy:
     DRAFT = "draft"
     CANIDATE = "canidate"
     OFFICIAL = "official"
+    EMPTY_STRING = "No Value Provided"
     
 #     def __init__(self, policyId, userId, policyType, policyTitle, policyDescription):
 #         self.policyId = policyId
@@ -25,10 +26,19 @@ class Policy:
         self.submittedTimestamp = policyData.get("submitted")
     
     def getTitle(self):
-        return self.policyTitle
+        if(len(self.policyTitle) > 0):
+            return self.policyTitle
+        else:
+            return Policy.EMPTY_STRING
+        
+    def getType(self):
+        return self.policyType
         
     def getDescription(self):
-        return self.policyDescription
+        if(len(self.policyDescription) > 0):
+            return self.policyDescription
+        else:
+            return Policy.EMPTY_STRING
         
     def getId(self):
         return self.policyId
@@ -41,7 +51,17 @@ class Policy:
         
     def getUpdatedDate(self):
         return datetime.fromtimestamp(self.updatedTimestamp, timezone.utc).strftime("%m/%d/%y %H:%M:%S %Z")
-        
+      
+    def validateForUpdate(self, userId):
+#     Validate that a policy can be submitted
+#         if(userId == None):
+#             raise ValueError("Can't save policy. User not logged in.")
+        if(self.policyType == Policy.DRAFT and self.userId == userId):
+#         If validated for submission, set submitted timestamp and policyType to canidate
+            self.updatedTimestamp = datetime.now().timestamp()
+            return True
+        else:
+            return False  
             
     def validateForSubmission(self, userId):
 #     Validate that a policy can be submitted
@@ -71,4 +91,11 @@ class Policy:
         value["created"] = self.createdTimestamp
         value["updated"] = self.updatedTimestamp
         value["submitted"] = self.submittedTimestamp
+        return value
+        
+    def toUpdateDictionary(self):
+        value = {}
+        value["title"] = self.policyTitle
+        value["description"] = self.policyDescription
+        value["updated"] = self.updatedTimestamp
         return value

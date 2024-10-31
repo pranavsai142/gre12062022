@@ -10,6 +10,9 @@ def render(user):
     drafts = Database.getDraftPolicies(user)
     canidates = Database.getCanidatePoliciesForUser(user)
     policies = Database.getOfficialPoliciesForUser(user)
+    draftAmendments = Database.getDraftAmendments(user)
+    canidateAmendments = Database.getCanidateAmendmentsForUser(user)
+    amendments = Database.getOfficialAmendmentsForUser(user)
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>
@@ -72,31 +75,46 @@ def render(user):
                 <div>User Info: {{ user }}</div>
                 <h2>My Policies and Amendments</h2>
                 <div class="draft-list">
-                    <span>Draft Policies</span><br>
+                    <h3>Draft Policies</h3><br>
                     {% for draft in drafts %}
                         <div class="draft-item">
-                            <a href="{{ url_for('detail', policyId=draft.policyId) }}">{{ draft.policyTitle }}</a>
+                            <a href="{{ url_for('detail', policyId=draft.getId()) }}">{{ draft.getTitle() }}</a>
                         </div>
                     {% endfor %}
-                    <span>Draft Amendments</span><br>
+                    <h4>Draft Amendments</h4><br>
+                    {% for draftAmendment in draftAmendments %}
+                        <div class="draft-item">
+                            <a href="{{ url_for('detail_amendment', amendmentId=draftAmendment.getId()) }}">{{ draftAmendment.getTitle() }}</a>
+                        </div>
+                    {% endfor %}
                 </div>
                 <div class="canidate-list">
-                    <span>Canidate Policies</span><br>
+                    <h3>Canidate Policies</h3><br>
                     {% for canidate in canidates %}
                         <div class="canidate-item">
-                            <a href="{{ url_for('detail', policyId=canidate.policyId) }}">{{ canidate.policyTitle }}</a>
+                            <a href="{{ url_for('detail', policyId=canidate.policyId) }}">{{ canidate.getTitle() }}</a>
                         </div>
                     {% endfor %}
-                    <span>Canidate Amendments</span><br>
+                    <h4>Canidate Amendments</h4><br>
+                    {% for canidateAmendment in canidateAmendments %}
+                        <div class="canidate-item">
+                            <a href="{{ url_for('detail_amendment', amendmentId=canidateAmendment.getId()) }}">{{ canidateAmendment.getTitle() }}</a>
+                        </div>
+                    {% endfor %}
                 </div>
                 <div class="official-list">
-                    <span>Official Policies</span><br>
+                    <h3>Official Policies</h3><br>
                     {% for policy in policies %}
-                        <div class="policy-item">
-                            <a href="{{ url_for('detail', policyId=policy.policyId) }}">{{ policy.policyTitle }}</a>
+                        <div class="official-item">
+                            <a href="{{ url_for('detail', policyId=policy.policyId) }}">{{ policy.getTitle() }}</a>
                         </div>
                     {% endfor %}
-                    <span>Official Amendments</span><br>
+                    <h4>Official Amendments</h4><br>
+                    {% for amendment in amendments %}
+                        <div class="official-item">
+                            <a href="{{ url_for('detail_amendment', amendmentId=amendment.getId()) }}">{{ amendment.getTitle() }}</a>
+                        </div>
+                    {% endfor %}
                 </div>
             </div>
             <a href="{{ url_for('logout') }}">logout</a>
@@ -105,4 +123,4 @@ def render(user):
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user, drafts=drafts, canidates=canidates, policies=policies)
+    ''', user=user, drafts=drafts, canidates=canidates, policies=policies, draftAmendments=draftAmendments, canidateAmendments=canidateAmendments, amendments=amendments)

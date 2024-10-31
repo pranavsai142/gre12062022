@@ -2,16 +2,12 @@ from flask import Flask, render_template_string
 import User
 import Database
 
-def render(user):
+def render(user, policyId):
     if(not User.validateUser(user)):
         user = None
+    policy = Database.getPolicy(user, policyId)
 #     Instaed of a conditonal inside the HTML, do a conditional outside the 
 #   render string and assign to a varaible that always gets displayed
-        
-    canidates = Database.getCanidatePolicies()
-    policies = Database.getOfficialPolicies()
-    canidateAmendments = Database.getCanidateAmendments()
-    amendments = Database.getOfficialAmendments()
     return render_template_string('''
         <!doctype html>
         <title>The Internet Party</title>
@@ -26,7 +22,20 @@ def render(user):
             }
             .content {
                 flex: 1;
+                max-width: 600px;
                 padding: 20px;
+            }
+            .policy-item pre {
+                white-space: pre-wrap; /* Ensures line breaks are preserved */
+                word-wrap: break-word; /* Breaks long words or URLs onto a new line */
+                overflow-x: auto; /* Adds a scrollbar if content exceeds width */
+                background-color: #f4f4f4;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 10px;
+                font-family: monospace;
+                width: 100%; /* Makes it take full width of its parent */
+                box-sizing: border-box; /* Includes padding and border in element's total width */
             }
             footer {
                 background-color: #333;
@@ -58,6 +67,12 @@ def render(user):
                 color: #ff6600;  /* Change this color to your preference */
                 font-weight: bold;
             }
+
+            @media (max-width: 768px) {
+                .content {
+                    flex-direction: column;
+                }
+
         </style>
         <body>
             <h1>The Internet Party</h1>
@@ -69,41 +84,36 @@ def render(user):
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item">{{ 'Account' if user else 'Login' }}</a>
             </div>
-            <div id="content">
-                <h2>Policy</h2><br>
-                <span><a href="{{ url_for('draft') }}">Draft Policy</a></span>
-                <div class="canidate-list">
-                    <h3>Canidate Policies</h3>
-                    {% for canidate in canidates %}
-                        <div class="canidate-item">
-                            <a href="{{ url_for('detail', policyId=canidate.policyId) }}">{{ canidate.policyTitle }}</a>
-                        </div>
-                    {% endfor %}
-                    <h4>Canidate Amendments</h4>
-                    {% for canidateAmendment in canidateAmendments %}
-                        <div class="canidate-item">
-                            <a href="{{ url_for('detail_amendment', amendmentId=canidateAmendment.getId()) }}">{{ canidateAmendment.getTitle() }}</a>
-                        </div>
-                    {% endfor %}
-                </div>
-                <div class="official-list">
-                    <h3>Official Policies</h3>
-                    {% for policy in policies %}
-                        <div class="official-item">
-                            <a href="{{ url_for('detail', policyId=policy.policyId) }}">{{ policy.policyTitle }}</a>
-                        </div>
-                    {% endfor %}
-                    <h4>Official Amendments</h4>
-                    {% for amendment in amendments %}
-                        <div class="official-item">
-                            <a href="{{ url_for('detail_amendment', amendmentId=amendment.getId()) }}">{{ amendment.getTitle() }}</a>
-                        </div>
-                    {% endfor %}
-                </div>
-            <div>
+            <h2>Draft Amendment</h2>
+            <div class="content">
+                {% if policy != None %}
+                    <div class="policy-item">
+                        <h3>Policy to Amend</h3>
+                        <span id="policyId">{{ policy.getId() }}</span><br>
+                        <span>Title: <a href="{{ url_for('detail', policyId=policy.getId()) }}">{{ policy.getTitle() }}</a></span><br>
+                        <span>Type: {{ policy.getType() }}</span><br>
+                        <pre><code>{{ policy.getDescription() }}</code></pre><br><br>
+                    </div>
+                    <form id="draftForm">
+                        <label for="title">Title:</label><br>
+                        <input type="text" id="title" value="{{ policy.getTitle() }}"><br><br>
+
+                        <label for="description">Description:</label><br>
+                        <textarea id="description">{{ policy.getDescription() }}</textarea><br><br>
+
+                        <button type="button" id="createDraft">Create Draft</button>
+                    </form>
+                {% else %}
+                    <span>Policy not found.</span>
+                {% endif %}
+            </div>
+            {% if user %}
+                <br><br><a href="{{ url_for('logout') }}">logout</a>
+            {% endif %}
+            <script src="{{ url_for('static', filename='js/draft-amendment.js') }}"></script>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user, canidates=canidates, policies=policies, canidateAmendments=canidateAmendments, amendments=amendments)
+    ''', user=user, policy=policy)

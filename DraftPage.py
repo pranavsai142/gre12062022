@@ -30,6 +30,7 @@ def render(user):
             .content {
                 flex: 1;
                 padding: 20px;
+                max-width: 600px;
                 display: flex;
             }
             footer {
@@ -126,7 +127,7 @@ def render(user):
                     <label for="description">Description:</label><br>
                     <textarea id="description" required></textarea><br><br>
         
-                    <button type="submit">Save Draft</button>
+                    <button type="button" id="saveDraft">Save Draft</button>
                 </form>
             </div>
             <script src="{{ url_for('static', filename='js/draft.js') }}"></script>

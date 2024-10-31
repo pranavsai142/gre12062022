@@ -1,16 +1,19 @@
 document.getElementById('saveDraft').addEventListener('click', function(event) {
-    const id = document.getElementById('policyId').innerText;
+
+    const id = document.getElementById('amendmentId').innerText;
+    const policyId = document.getElementById('policyId').innerText;
     const title = document.getElementById('title').value;
     const description = document.getElementById('description').value;
     console.log('Saving draft...' + id);
 
-    fetch('/update-draft', {
+    fetch('/update-draft-amendment', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
             id: id,
+            policyId: policyId,
             title: title,
             description: description
         })
@@ -18,7 +21,7 @@ document.getElementById('saveDraft').addEventListener('click', function(event) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Draft saved successfully.');
+            alert('Draft amendment saved successfully.');
             // Optionally, you might want to clear the form or navigate to another page
             // window.location.href = "/policy"; // Redirect to policy page if needed
         } else {
@@ -32,22 +35,25 @@ document.getElementById('saveDraft').addEventListener('click', function(event) {
 });
 
 document.getElementById('submitDraft').addEventListener('click', function(event) {
-    const id = document.getElementById('policyId').innerText;
+
+    const id = document.getElementById('amendmentId').innerText;
+    const policyId = document.getElementById('policyId').innerText;
     if(confirm("Warning! Any unsaved changes will not be submitted.")) {
         console.log('Submitting draft...', id);
-        fetch('/submit-draft', {
+        fetch('/submit-draft-amendment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
                 id: id,
+                policyId: policyId
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Draft submitted successfully! Congratulations!');
+                alert('Draft amendment submitted successfully! Congratulations!');
                 document.getElementById('draftForm').reset();
                 // Optionally, you might want to clear the form or navigate to another page
                 // window.location.href = "/policy"; // Redirect to policy page if needed
@@ -63,22 +69,25 @@ document.getElementById('submitDraft').addEventListener('click', function(event)
 });
 
 document.getElementById('removeDraft').addEventListener('click', function(event) {
-    const id = document.getElementById('policyId').innerText;
-    if(confirm("The draft is irrecoverable, please confirm removal.")) {
+
+    const id = document.getElementById('amendmentId').innerText;
+    const policyId = document.getElementById('policyId').innerText;
+    if(confirm("The draft is irrecoverable, Please confirm removal.")) {
         console.log('Submitting draft...', id);
-        fetch('/remove-draft', {
+        fetch('/remove-draft-amendment', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
                 id: id,
+                policyId: policyId
             })
         })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Draft removed successfully.');
+                alert('Draft amendment removed successfully.');
                 document.getElementById('draftForm').reset();
                 // Optionally, you might want to clear the form or navigate to another page
                 // window.location.href = "/policy"; // Redirect to policy page if needed
