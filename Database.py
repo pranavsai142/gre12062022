@@ -57,14 +57,14 @@ def getCanidateAmendment(amendmentId):
     ref = db.reference("amendment/canidate/" + amendmentId)
     amendmentData = ref.get()
     if(amendmentData != None):
-        return Amendment(amendmendId, amendmentData)
+        return Amendment(amendmentId, amendmentData)
     return None
     
 def getOfficialAmendment(amendmentId):
     ref = db.reference("amendment/official/" + amendmentId)
     amendmentData = ref.get()
     if(amendmentData != None):
-        return Amendment(amendmendId, amendmentData)
+        return Amendment(amendmentId, amendmentData)
     return None
     
 # This is a function to get a policy searching in all three policy types   
