@@ -137,7 +137,7 @@ def render(user, amendmentId):
                                         <button type="button" id="submitDraft">Submit Draft</button>
                                     </div>
                                 </form>
-                            {% elif amendment.policyType == "canidate" %}
+                            {% elif amendment.amendmentType == "canidate" %}
                                 <div class="canidate-item">
                                     <span>Title: {{ amendment.getTitle() }}</span><br><br>
                                     <span>Type: {{ amendment.getType() }}</span><br><br>
