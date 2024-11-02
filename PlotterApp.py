@@ -17,7 +17,7 @@ import Database
 
 app = Flask(__name__)
 DATA_FOLDER = "/data/"
-# DATA_FOLDER = "/Volumes/ssd/downloads/"
+# DATA_FOLDER = "../"
 # Dictionary mapping state names to their abbreviations
 states = {
     "Alabama": "al",
@@ -200,7 +200,8 @@ def isValidStateInitial(stateInitial):
     return upperInitial in validStates
 
 # Initialize Firebase Admin SDK (you need to set up your Firebase project first)
-cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-8c18a98bd5.json")
+cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-dbb275210d.json")
+
 initialize_app(cred, {
     'databaseURL': 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
 })

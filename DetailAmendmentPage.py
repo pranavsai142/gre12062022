@@ -139,17 +139,18 @@ def render(user, amendmentId):
                                 </form>
                             {% elif amendment.amendmentType == "canidate" %}
                                 <div class="canidate-item">
+                                    <h3>Amendment</h3>
                                     <span>Title: {{ amendment.getTitle() }}</span><br><br>
                                     <span>Type: {{ amendment.getType() }}</span><br><br>
-                                    <span>Description: {{ amendment.getDescription() }}</span><br><br>
-                            
-                                </form>
+                                    <pre><code>{{ amendment.getDescription() }}</code></pre><br><br>
+                                </div>
                             {% elif amendment.amendmentType == "official" %}
                                 <div class="official-item">
+                                    <h3>Amendment</h3>
                                     <span>Title: {{ amendment.getTitle() }}</span><br><br>
-                                    <span>Title: {{ amendment.getDescription() }}</span><br><br>
-                                    <button type="button" id="saveDraft">Save Draft</button>
-                                </form>
+                                    <span>Type: {{ amendment.getType() }}</span><br><br>
+                                    <pre><code>{{ amendment.getDescription() }}</code></pre><br><br>
+                                </div>
                             {% endif %}
                         {% else %}
                             <span>Policy not found.</span>

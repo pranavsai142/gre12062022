@@ -27,7 +27,7 @@ class Amendment:
         self.submittedTimestamp = amendmentData.get("submitted")
     
     def getType(self):
-        return amendment.amendmentType
+        return self.amendmentType
         
     def getTitle(self):
         if(len(self.amendmentTitle) > 0):
