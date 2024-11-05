@@ -166,8 +166,8 @@ def main(args):
             repFile.close()
             print("Writing to files state, delta, dem, rep:", STATE, timedelta.total_seconds(), demVotes, repVotes, flush=True)
             print()
-            time.sleep(random.randint(40, 60))
-        time.sleep(600)
+            time.sleep(random.randint(15, 30))
+#         time.sleep(20)
         
 if __name__ == "__main__":
     entryPoint()
