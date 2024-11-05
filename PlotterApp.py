@@ -8,6 +8,7 @@ import numpy as np
 from firebase_admin import auth, credentials, initialize_app, db
 from datetime import datetime
 import uuid
+import json
 
 import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage, DraftAmendmentPage, DetailAmendmentPage
 from Policy import Policy
@@ -72,6 +73,19 @@ states = {
     "Wyoming": "wy"
 }
 
+def get_counties_for_state(state_initial):
+    counties = []
+    file_path = DATA_FOLDER + state_initial + "/countyResults.json"
+    try:
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            for key in data.keys():
+                if key != "times":
+                    counties.append(key)
+    except FileNotFoundError:
+        print(f"WARNING: One or more results files do not exist in {state_initial} folder!", flush=True)
+    return counties
+    
 
 def animate(i, state_initial):
     """
@@ -155,6 +169,85 @@ def generate_delta(state_initial):
     ax.plot(offsetTimes, demDelta, label="Dem")
     ax.plot(offsetTimes, repDelta, label="Rep")
     ax.set_title(f'{state_initial.upper()} Presidency Vote Delta')
+    ax.set_xlabel('Days since election start')
+    ax.set_ylabel('Average # of New Votes')
+    ax.legend()
+
+    # Convert plot to PNG image
+    img = io.BytesIO()
+    FigureCanvas(fig).print_png(img)
+    img.seek(0)
+    return img
+
+def generate_county_plot(state_initial, county):
+    """
+    Generate a plot based on the state initial.
+
+    Args:
+    state_initial (str): The state abbreviation to generate the plot for.
+
+    Returns:
+    io.BytesIO: A BytesIO object containing the plot as a PNG image.
+    """
+    times, demVotes, repVotes = [], [], []
+    file_path = DATA_FOLDER + state_initial + "/countyResults.json"
+    try:
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            times = data["times"][:]
+            demVotes = data[county]["dem"][:]
+            repVotes = data[county]["rep"][:]
+    except FileNotFoundError:
+        print(f"WARNING: One or more results files do not exist in {state_initial} folder!", flush=True)
+    times = data["times"][:]
+    demVotes = data[county]["dem"][:]
+    repVotes = data[county]["rep"][:]
+    fig = Figure()
+    ax = fig.add_subplot(111)
+    ax.plot(times, demVotes, label="Dem")
+    ax.plot(times, repVotes, label="Rep")
+    ax.set_title(f'{state_initial.upper() + " " + county } Presidency Results')
+    ax.set_xlabel('Days since election start')
+    ax.set_ylabel('Vote Count')
+    ax.legend()
+
+    # Convert plot to PNG image
+    img = io.BytesIO()
+    FigureCanvas(fig).print_png(img)
+    img.seek(0)
+    return img
+    
+def generate_county_delta(state_initial, county):
+    """
+    Generate a plot based on the state initial.
+
+    Args:
+    state_initial (str): The state abbreviation to generate the plot for.
+
+    Returns:
+    io.BytesIO: A BytesIO object containing the plot as a PNG image.
+    """
+    times, demVotes, repVotes = [], [], []
+    file_path = DATA_FOLDER + state_initial + "/countyResults.json"
+    try:
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            times = data["times"][:]
+            demVotes = data[county]["dem"][:]
+            repVotes = data[county]["rep"][:]
+    except FileNotFoundError:
+        print(f"WARNING: One or more results files do not exist in {state_initial} folder!", flush=True)
+    times = data["times"][:]
+    demVotes = data[county]["dem"][:]
+    repVotes = data[county]["rep"][:]
+    demDelta = np.diff(demVotes)
+    repDelta = np.diff(repVotes)
+    offsetTimes = times[1:]
+    fig = Figure()
+    ax = fig.add_subplot(111)
+    ax.plot(offsetTimes, demDelta, label="Dem")
+    ax.plot(offsetTimes, repDelta, label="Rep")
+    ax.set_title(f'{state_initial.upper() + " " + county } Presidency Vote Delta')
     ax.set_xlabel('Days since election start')
     ax.set_ylabel('Average # of New Votes')
     ax.legend()
@@ -468,11 +561,19 @@ def monitor(state='ga'):
     # Dynamically generate the src for the image based on the state
     plot_src = f"/plot/{state.lower()}"
     delta_src = f"/delta/{state.lower()}"
+    
+    counties = get_counties_for_state(state)
     # Generate HTML for the state links
     state_links = '<ul>\n'
     for full_state, abbr in states.items():
         state_links += f'<li><a href="{url_for("monitor", state=abbr)}">{full_state}</a></li>\n'
     state_links += '</ul>'
+    
+        # Generate county links
+    county_links = '<ul>\n'
+    for county in counties:
+        county_links += f'<li><a href="{url_for("county_monitor", state=state, county=county)}">{county}</a></li>\n'
+    county_links += '</ul>'
 
     return render_template_string('''
         <!doctype html>
@@ -503,11 +604,16 @@ def monitor(state='ga'):
             .footer-text span {
                 color: #ff6600; /* A vibrant orange for Grok */
             }
+            .submenu { 
+                margin-left: 20px; 
+            }
         </style>
         <body>
             <h1>{{ state.upper() }} Timeseries (updates every 10 min)</h1>
             <img src="{{ plot_src }}" />
             <img src="{{ delta_src }}" />
+            <h2>Counties in {{ state.upper() }}:</h2>
+            <div class="submenu">{{ county_links|safe }}</div>
             <h2>Select Another State:</h2>
             {{ state_links|safe }}
             <footer>
@@ -515,7 +621,74 @@ def monitor(state='ga'):
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', state=state, plot_src=plot_src, delta_src=delta_src, state_links=state_links)
+    ''', state=state, plot_src=plot_src, delta_src=delta_src, state_links=state_links, county_links=county_links)
+
+@app.route('/monitor/<state>/<county>')
+def county_monitor(state, county):
+    if not isValidStateInitial(state) or county not in get_counties_for_state(state):
+        return NotFoundPage.render(session.get("user"))
+    
+    # Assuming you have functions or files to generate county-specific plots
+    county_plot_src = f"/plot/{state.lower()}/{county.lower()}"
+    county_delta_src = f"/delta/{state.lower()}/{county.lower()}"
+    counties = get_counties_for_state(state)
+
+    
+    state_links = '<ul>\n'
+    for full_state, abbr in states.items():
+        state_links += f'<li><a href="{url_for("monitor", state=abbr)}">{full_state}</a></li>\n'
+    state_links += '</ul>'
+    
+        # Generate county links
+    county_links = '<ul>\n'
+    for county in counties:
+        county_links += f'<li><a href="{url_for("county_monitor", state=state, county=county)}">{county}</a></li>\n'
+    county_links += '</ul>'
+    
+    return render_template_string('''
+        <!doctype html>
+        <title>{{ county }} County, {{ state.upper() }} Timeseries</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+            }
+            .content {
+                flex: 1;
+                padding: 20px;
+            }
+            footer {
+                background-color: #333;
+                color: white;
+                text-align: center;
+                padding: 10px;
+                font-size: 14px;
+            }
+            .footer-text {
+                margin: 0;
+            }
+            .footer-text span {
+                color: #ff6600; /* A vibrant orange for Grok */
+            }
+        </style>
+        <body>
+            <h1>{{ county }} County, {{ state.upper() }} Timeseries (updates every 10 min)</h1>
+            <img src="{{ county_plot_src }}" />
+            <img src="{{ county_delta_src }}" />
+            <h2>Counties in {{ state.upper() }}:</h2>
+            <div class="submenu">{{ county_links|safe }}</div>
+            <h2>Select Another State:</h2>
+            {{ state_links|safe }}
+            <footer>
+                <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
+                <p class="footer-text">Powered by <span>Grok</span></p>
+            </footer>
+        </body>
+    ''', state=state, county=county, county_plot_src=county_plot_src, county_delta_src=county_delta_src, state_links=state_links, county_links=county_links)
 
 @app.route('/plot/<state>')
 def plot(state):
@@ -543,6 +716,34 @@ def delta(state):
     Response: A Flask response object containing the plot image.
     """
     img = generate_delta(state.lower())
+    return send_file(img, mimetype='image/png')
+    
+@app.route('/plot/<state>/<county>')
+def plot_county(state, county):
+    """
+    Route to serve the plot image for a given state.
+
+    Args:
+    state (str): The state abbreviation to fetch data for.
+
+    Returns:
+    Response: A Flask response object containing the plot image.
+    """
+    img = generate_county_plot(state.lower(), county.lower())
+    return send_file(img, mimetype='image/png')
+    
+@app.route('/delta/<state>/<county>')
+def delta_county(state, county):
+    """
+    Route to serve the delta image for a given state.
+
+    Args:
+    state (str): The state abbreviation to fetch data for.
+
+    Returns:
+    Response: A Flask response object containing the plot image.
+    """
+    img = generate_county_delta(state.lower(), county.lower())
     return send_file(img, mimetype='image/png')
 
 if __name__ == '__main__':
