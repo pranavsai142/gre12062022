@@ -10,9 +10,6 @@ datetime = "*"
 packaging = "*"
 flask = "*"
 firebase-admin = "*"
-selenium = "*"
-chromedriver-autoinstaller = "*"
-webdriver-manager = "*"
 
 [dev-packages]
 
