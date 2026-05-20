@@ -6,7 +6,7 @@ def render(user):
         user = None
     return render_template_string('''
         <!doctype html>
-        <title>The Internet Party</title>
+        <title>The Internet Party — About</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -15,10 +15,14 @@ def render(user):
                 display: flex;
                 flex-direction: column;
                 min-height: 100vh;
+                background: #fafafa;
             }
             .content {
                 flex: 1;
                 padding: 20px;
+                max-width: 960px;
+                margin: 0 auto;
+                line-height: 1.6;
             }
             footer {
                 background-color: #333;
@@ -31,9 +35,8 @@ def render(user):
                 margin: 0;
             }
             .footer-text span {
-                color: #ff6600; /* A vibrant orange for Grok */
+                color: #ff6600;
             }
-            /* New styles for menu bar */
             .menu-bar {
                 display: flex;
                 justify-content: space-around;
@@ -47,21 +50,84 @@ def render(user):
                 color: #333;
             }
             .menu-item.active {
-                color: #ff6600;  /* Change this color to your preference */
+                color: #ff6600;
                 font-weight: bold;
             }
+            .about-section { margin-bottom: 36px; }
+            .about-section h2 { border-bottom: 3px solid #ff6600; padding-bottom: 6px; }
+            .meta { background:#fff9e6; padding:16px; border-left:6px solid #cc9900; margin:16px 0; }
+            ul { padding-left: 22px; }
         </style>
         <body>
             <h1>The Internet Party</h1>
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item">Policy</a>
+                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item.active">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item">{{ 'Account' if user else 'Login' }}</a>
             </div>
-            <h2>About</h2>
+
+            <div class="content">
+                <h2>About The Internet Party (Party No. 3)</h2>
+
+                <div class="about-section">
+                    <p style="font-size:1.3em;margin:8px 0 16px;"><strong>Truth • Freedom • Health</strong></p>
+                    <p>
+                        After 2020, it was clear the old system had failed ordinary people. So we built something new:
+                        a parallel political system where <strong>anyone with internet can join</strong> and actually write the rules.
+                        No insiders. No four-year waits. The platform belongs to the members — and it is rewritten every single week by majority vote.
+                    </p>
+                    <p><a href="{{ url_for('register') }}" style="color:#ff6600;font-weight:600;">Join the Party today</a> — it takes one minute. Or <a href="{{ url_for('login') }}">log in</a> if you already have an account.</p>
+                </div>
+
+                <div class="about-section">
+                    <h2>How the Weekly Vote Works</h2>
+                    <p>Simple, transparent, and powerful:</p>
+                    <ol>
+                        <li>Any registered member drafts a Policy or an Amendment in their private drafts hub.</li>
+                        <li>They save it, then submit it to the canidate queue for the week.</li>
+                        <li>Every Sunday the candidates go on the ballot. Registered members vote Yes / No / Abstain — once.</li>
+                        <li>Majority Yes wins and becomes part of the official living platform.</li>
+                        <li>The official platform is the real law of the party — visible to everyone, changed only by the people.</li>
+                    </ol>
+                    <p style="margin-top:12px;"><a href="{{ url_for('vote') }}" style="font-weight:600;color:#ff6600;">See this week's ballot and vote now →</a></p>
+                </div>
+
+                <div class="about-section">
+                    <h2>The Real Rules (MetaPolicies, explained plainly)</h2>
+                    <ul style="line-height:1.7;">
+                        <li><strong>Weekly Sunday vote</strong>: Majority of registered members who cast a ballot decides what passes.</li>
+                        <li><strong>365-day sunset + renewal</strong>: Nothing stays official forever. Every item must be re-approved by vote within a year or it expires.</li>
+                        <li><strong>Title under 100 characters</strong>, full description under 10,000 characters. Keep it tight and clear.</li>
+                        <li><strong>One human, one membership</strong>: Registration requires your real phone number + name carrier. No bots, no duplicates.</li>
+                        <li><strong>Stay active or lose membership</strong>: Three weeks of inactivity and you are dismissed. Participation keeps the system alive.</li>
+                        <li>Every draft, vote, and promotion is public and permanent in the record.</li>
+                    </ul>
+                </div>
+
+                <div class="about-section">
+                    <h2>Our Platform: Truth • Freedom • Health</h2>
+                    <p>These are not slogans. They are concrete promises already in motion or on the table:</p>
+                    <ul style="line-height:1.65;">
+                        <li><strong>Truth</strong>: Full audits of COVID death counts and vaccine data, First Amendment protections, RICO accountability, criminal justice reform (end the prohibition, class actions against bad actors), police audits.</li>
+                        <li><strong>Freedom</strong>: American Basic Income / Liberty Dividend so every citizen has a floor. Employee rights. Bring the troops home. End imperial violence and foreign aid waste. "Fuck the Feds" — audit and restrain the CIA, FDA, CDC, NORAD, Fed, Pentagon, TSA. Repeal the Patriot Act.</li>
+                        <li><strong>Health</strong>: Sustainable microgrids and real environmental infrastructure that actually works for communities.</li>
+                        <li><strong>Voting Reform &amp; Vision</strong>: Character limits on proposals, real one-person-one-vote, and the long-term goal: Madam President Roseanne Barr leading a government of the people, by the people, on the internet.</li>
+                    </ul>
+                    <p style="margin-top:10px;font-style:italic;">This is the beginning. You write the rest.</p>
+                </div>
+
+                <div class="about-section" style="text-align:center; margin-top:30px;">
+                    <p style="font-size:1.1em;"><strong>Ready to have a real voice?</strong></p>
+                    <a href="{{ url_for('register') }}" style="display:inline-block;margin:8px;padding:12px 28px;background:#ff6600;color:white;border-radius:6px;text-decoration:none;font-weight:700;">Join the Party — Free</a>
+                    <a href="{{ url_for('login') }}" style="display:inline-block;margin:8px;padding:12px 28px;background:#333;color:white;border-radius:6px;text-decoration:none;font-weight:600;">I already have an account</a>
+                    <p style="margin-top:20px;"><a href="{{ url_for('policy') }}">Browse the Congressional Library</a> &nbsp;•&nbsp; <a href="{{ url_for('vote') }}">Vote on the Current Ballot</a> &nbsp;•&nbsp; <a href="{{ url_for('index') }}">Back to Home</a></p>
+                </div>
+            </div>
+
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>

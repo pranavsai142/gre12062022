@@ -105,6 +105,7 @@ def render(user):
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item.active">Policy</a>
+                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
@@ -112,6 +113,9 @@ def render(user):
             </div>
             <h2>Draft</h2>
             {{ body }}
+            {% if drafts %}
+                <!-- no ballot notice here to avoid clutter; the main call-to-action lives on Policy + Vote -->
+            {% endif %}
             <div class="content">
                 <div class="draft-list">
                     {% for draft in drafts %}
@@ -120,6 +124,7 @@ def render(user):
                         </div>
                     {% endfor %}
                 </div>
+                <p style="background:#fff3e0;padding:8px;border-left:4px solid #ff6600;font-size:0.9em"><a href="{{ url_for('drafts') }}" style="color:#ff6600;font-weight:600">Edit this draft in the new rich Drafts hub (recommended) →</a> (legacy form below preserved for compatibility)</p>
                 <form id="draftForm">
                     <label for="title">Title:</label><br>
                     <input type="text" id="title" required><br><br>

@@ -1,0 +1,34 @@
+[debug] [2026-05-19T21:50:03.585Z] ----------------------------------------------------------------------
+[debug] [2026-05-19T21:50:03.587Z] Command:       /opt/homebrew/Cellar/node@22/22.22.2_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth
+[debug] [2026-05-19T21:50:03.587Z] CLI Version:   15.18.0
+[debug] [2026-05-19T21:50:03.587Z] Platform:      darwin
+[debug] [2026-05-19T21:50:03.587Z] Node Version:  v22.22.2
+[debug] [2026-05-19T21:50:03.588Z] Time:          Tue May 19 2026 14:50:03 GMT-0700 (Pacific Daylight Time)
+[debug] [2026-05-19T21:50:03.588Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-19T21:50:04.071Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] Failed to authenticate, have you run firebase login?
+[warn] ⚠  emulators: You are not currently authenticated so some features may not work correctly. Please run firebase login to authenticate the CLI. 
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-05-19T21:50:04.460Z] [auth] Authentication Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[warn] ⚠  logging: Logging Emulator unable to start on port 4500, starting on 4501 instead. {"metadata":{"emulator":{"name":"logging"},"message":"Logging Emulator unable to start on port 4500, starting on 4501 instead."}}
+[debug] [2026-05-19T21:50:04.460Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-05-19T21:50:04.460Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4501}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-05-19T21:50:04.463Z] Write emulator hub locator at /var/folders/h9/sn160jkx6hb87vp9683ptqr00000gn/T/hub-theinternetparty-5b902.json
+[debug] [2026-05-19T21:50:07.814Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase SQL Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┬────────────────────────────┐
+│ Emulator       │ Host:Port      │ View in Emulator UI        │
+├────────────────┼────────────────┼────────────────────────────┤
+│ Authentication │ 127.0.0.1:9099 │ http://127.0.0.1:4000/auth │
+└────────────────┴────────────────┴────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4501
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 

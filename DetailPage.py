@@ -152,6 +152,7 @@ def render(user, policyId):
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item.active">Policy</a>
+                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
@@ -160,6 +161,7 @@ def render(user, policyId):
             {% if policy %}
                 {% if policy.policyType == "draft" %}
                         <h2>Draft Policy Details</h2>
+                        <p style="background:#fff3e0;padding:8px;border-left:4px solid #ff6600;font-size:0.9em"><a href="{{ url_for('drafts') }}" style="color:#ff6600;font-weight:600">Edit this draft in the new rich Drafts hub (recommended) →</a> (legacy form below preserved for compatibility)</p>
                 {% endif %}
             {% else %}
                 <h2>Policy Details</h2>
@@ -190,13 +192,14 @@ def render(user, policyId):
                                 <span>Type: {{ policy.getType() }}</span><br>
                                 <pre><code>{{ policy.getDescription() }}</code></pre><br>
                                 
-                                <a href="{{ url_for('draft_amendment', policyId=policy.getId()) }}">Draft Amendment</a>
+                                <a href="{{ url_for('drafts', amend=policy.getId()) }}">Draft Amendment</a>
                             </div>
                         {% elif policy.policyType == "official" %}
                             <div class="official-list">
                                 <span>Title: {{ policy.getTitle() }}</span><br><br>
                                 <span>Type: {{ policy.getType() }}</span><br><br>
                                 <pre><code>{{ policy.getDescription() }}</code></pre><br><br>
+                                <a href="{{ url_for('drafts', amend=policy.getId()) }}">Amend this policy (via Drafts hub)</a>
                             </div>
                         {% endif %}
                     </div>

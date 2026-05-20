@@ -9,14 +9,16 @@ from firebase_admin import auth, credentials, initialize_app, db
 from datetime import datetime
 import uuid
 
-import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage, DraftAmendmentPage, DetailAmendmentPage
+import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DraftPage, DetailPage, DraftAmendmentPage, DetailAmendmentPage, DraftsPage
 from Policy import Policy
 from Amendment import Amendment
 import User
 import Database
+from Ballot import Ballot
+from Vote import Vote, VOTE_YES, VOTE_NO, VOTE_ABSTAIN
 
 app = Flask(__name__)
-DATA_FOLDER = "/data/"
+DATA_FOLDER = "/Users/pranav/data/"
 # DATA_FOLDER = "../"
 # Dictionary mapping state names to their abbreviations
 states = {
@@ -200,7 +202,7 @@ def isValidStateInitial(stateInitial):
     return upperInitial in validStates
 
 # Initialize Firebase Admin SDK (you need to set up your Firebase project first)
-cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-dbb275210d.json")
+cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json")
 
 initialize_app(cred, {
     'databaseURL': 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
@@ -381,6 +383,99 @@ def submit_draft_amendment():
         return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 500
 
 
+# ============================================================================
+# VOTING ENDPOINTS (ballot submission + window close/promote)
+# Follows the exact same JSON + session + "fish" error pattern as all other
+# draft/amendment submit routes.
+# ============================================================================
+
+@app.route("/submit-ballot", methods=["POST"])
+def submit_ballot():
+    data = request.get_json()
+    windowId = data.get("windowId") or Database.getCurrentVotingWindowId()
+    choices = data.get("votes") or data.get("choices") or {}
+    sessionUserData = session.get("user")
+
+    if(User.validateUser(sessionUserData)):
+        success, message = Database.recordUserBallot(sessionUserData, windowId, choices)
+        if success:
+            return jsonify({"success": True, "message": message})
+        else:
+            return jsonify({"success": False, "error": message}), 400
+    else:
+        return jsonify({"success": False, "error": "You must be logged in to cast a ballot."}), 401
+
+
+@app.route("/close-window", methods=["POST"])
+def close_window():
+    """Manual tabulate + promote for the current (or specified) window.
+    Visible to any logged-in user in v1 for operator flexibility during early use.
+    Later can be restricted.
+    """
+    data = request.get_json() or {}
+    windowId = data.get("windowId") or Database.getCurrentVotingWindowId()
+    sessionUserData = session.get("user")
+
+    if(User.validateUser(sessionUserData)):
+        result = Database.promoteWinnersFromWindow(windowId)
+        return jsonify({"success": True, "result": result})
+    else:
+        return jsonify({"success": False, "error": "You must be logged in to close a voting window."}), 401
+
+
+# ============================================================================
+# DEV / ADMIN TOOLS ENDPOINTS (for Prefab dashboards + agentic flows)
+# These let the nice UIs actually *do* things instead of just showing copy-paste commands.
+# Run from repo root with the service account present for full power.
+# ============================================================================
+
+@app.route("/dev-tools/windows", methods=["GET"])
+def dev_tools_windows():
+    """Return list of windows with participation/vote counts for the dashboards."""
+    try:
+        Database.ensure_firebase_initialized()
+        wins = Database.get_all_voting_windows()
+        out = []
+        for w in wins or []:
+            d = Database.get_window_details(w)
+            out.append({
+                "window": w,
+                "participation": d.get("participation_count", 0),
+                "votes": d.get("vote_count", 0),
+            })
+        return jsonify({"windows": out, "source": "live"})
+    except Exception as e:
+        return jsonify({"windows": [], "source": "error", "error": str(e)}), 500
+
+
+@app.route("/dev-tools/seed", methods=["POST"])
+def dev_tools_seed():
+    data = request.get_json() or {}
+    window = data.get("window") or Database.getCurrentVotingWindowId()
+    count = int(data.get("count", 5))
+    res = Database.seed_test_votes(window, count=count, force=True)
+    return jsonify(res)
+
+
+@app.route("/dev-tools/clear", methods=["POST"])
+def dev_tools_clear():
+    data = request.get_json() or {}
+    window = data.get("window")
+    if not window:
+        return jsonify({"success": False, "error": "window required"}), 400
+    confirm = bool(data.get("confirm", False))
+    res = Database.clear_window_votes(window, confirm=confirm)
+    return jsonify(res)
+
+
+@app.route("/dev-tools/promote", methods=["POST"])
+def dev_tools_promote():
+    data = request.get_json() or {}
+    window = data.get("window") or Database.getCurrentVotingWindowId()
+    res = Database.promoteWinnersFromWindow(window)
+    return jsonify(res)
+
+
 @app.route('/robots.txt')
 def robots_txt():
     return "fuck off"
@@ -418,6 +513,16 @@ def draft():
 @app.route('/draft/amendment/<policyId>')
 def draft_amendment(policyId):
     htmlString = DraftAmendmentPage.render(session.get("user"), policyId)
+    return htmlString
+
+@app.route('/drafts')
+def drafts():
+    u = session.get("user")
+    if not User.validateUser(u):
+        u = None
+    new_param = request.args.get('new')
+    amend_param = request.args.get('amend')
+    htmlString = DraftsPage.render(u, new=new_param, amend=amend_param)
     return htmlString
     
 @app.route('/detail/<policyId>')

@@ -97,6 +97,7 @@ def render(user, amendmentId):
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item.active">Policy</a>
+                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
@@ -105,6 +106,11 @@ def render(user, amendmentId):
             {% if amendment %}
                 {% if amendment.amendmentType == "draft" %}
                         <h2>Draft Amendment Details</h2>
+                        <p style="background:#e0f2fe;padding:10px 14px;border-left:5px solid #0284c8;font-size:0.95em;border-radius:4px;">
+                            <strong>Best experience:</strong> <a href="{{ url_for('drafts', amend=(amendment.getPolicyId() if amendment else '')) }}" style="color:#0369a1;font-weight:700">Open this amendment in the rich Drafts hub</a> — full original policy + editable Final Version + live diff, working Save/Submit.
+                        </p>
+                {% else %}
+                        <h2>Amendment Details</h2>
                 {% endif %}
             {% else %}
                 <h2>Amendment Details</h2>

@@ -13,3 +13,14 @@ cd gre12062022
 pipenv shell
 pipenv install
 python Plotter.py
+
+## Dev Tools & Admin Console (Post-Voting Engine)
+
+The approved plan delivered fully runnable tooling:
+
+- Visual dashboards: `pipenv run prefab serve dev_tools/dev_dashboard.py` and `pipenv run prefab serve admin/admin_console.py`
+- Primary agent CLI (real mutations): `pipenv run python -m dev_tools.cli --help`
+  (list-windows, seed, clear, simulate, promote — all wired to production Database helpers)
+
+See DEV_NOTES_AND_IMPLEMENTATION_STATUS.md and FIREBASE_STRUCTURE.md for details.
+The public site (especially /policy as the Congressional Library) is now high-quality and consistent with the Vote page.

@@ -79,6 +79,7 @@ def render(user, policyId):
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item.active">Policy</a>
+                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
@@ -94,6 +95,7 @@ def render(user, policyId):
                         <span>Type: {{ policy.getType() }}</span><br>
                         <pre><code>{{ policy.getDescription() }}</code></pre><br><br>
                     </div>
+                    <p style="background:#fff3e0;padding:8px;border-left:4px solid #ff6600;font-size:0.9em"><a href="{{ url_for('drafts', amend=policy.getId()) }}" style="color:#ff6600;font-weight:600">Edit this in the rich Drafts hub (recommended — has live diff + original) →</a> (legacy form below for compatibility)</p>
                     <form id="draftForm">
                         <label for="title">Title:</label><br>
                         <input type="text" id="title" value="{{ policy.getTitle() }}"><br><br>
