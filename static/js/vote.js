@@ -24,8 +24,10 @@ if (submitBtn) {
             ? (document.querySelector('.ballot-header').textContent.match(/Window\s+([^\s<]+)/) || [])[1]
             : null;
 
+        // With abstain as the default, an untouched ballot will submit all abstains.
+        // Only block if there are literally no items to vote on.
         if (Object.keys(votes).length === 0) {
-            alert("Please select a choice (Yes / No / Abstain) for at least one item before submitting.");
+            alert("There are no items on this ballot to vote on.");
             return;
         }
 

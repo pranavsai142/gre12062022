@@ -34,7 +34,9 @@ function handleLogin() {
         var errorCode = error.code;
         var errorMessage = error.message;
         console.error("Login error:", errorCode, errorMessage);
-        document.getElementById("errorMessage").textContent=errorMessage
+        const errEl = document.getElementById("errorMessage");
+        errEl.textContent = errorMessage;
+        errEl.style.display = 'block';
         // Display error to user
     });
     firebase.auth().onAuthStateChanged(user => {

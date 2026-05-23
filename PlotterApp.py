@@ -450,8 +450,33 @@ def dev_tools_windows():
 
 @app.route("/dev-tools/seed", methods=["POST"])
 def dev_tools_seed():
+    """Seeding is an operator/dev action; require logged-in user.
+    Supports both the original random batch and the new precise choice-based seeding
+    requested for deterministic testing ("send 3 yes to all items", "send 5 no", etc.).
+    """
+    sessionUserData = session.get("user")
+    if not User.validateUser(sessionUserData):
+        return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     data = request.get_json() or {}
     window = data.get("window") or Database.getCurrentVotingWindowId()
+
+    # New precise mode (preferred for the user's test needs)
+    choice = data.get("choice")
+    if choice is not None:
+        # Normalize common representations (1/"yes"/"1" → "yes", 0/"no"→"no", -1/"abstain"→"abstain")
+        # in the endpoint so frontend (strings or legacy ints) always result in canonical DB strings.
+        choice_map = {
+            1: Database.VOTE_YES, "1": Database.VOTE_YES, "yes": Database.VOTE_YES, "YES": Database.VOTE_YES,
+            0: Database.VOTE_NO, "0": Database.VOTE_NO, "no": Database.VOTE_NO, "NO": Database.VOTE_NO,
+            -1: Database.VOTE_ABSTAIN, "-1": Database.VOTE_ABSTAIN, "abstain": Database.VOTE_ABSTAIN, "ABSTAIN": Database.VOTE_ABSTAIN,
+        }
+        if choice in choice_map:
+            choice = choice_map[choice]
+        count = int(data.get("count", 3))
+        res = Database.seed_synthetic_choice_votes(window, choice, count=count, force=True)
+        return jsonify(res)
+
+    # Backwards-compatible random batch
     count = int(data.get("count", 5))
     res = Database.seed_test_votes(window, count=count, force=True)
     return jsonify(res)
@@ -459,6 +484,12 @@ def dev_tools_seed():
 
 @app.route("/dev-tools/clear", methods=["POST"])
 def dev_tools_clear():
+    """Clear is destructive; require logged-in user (matches /close-window pattern).
+    The primary website operator surface now calls this; protected against unauth callers.
+    """
+    sessionUserData = session.get("user")
+    if not User.validateUser(sessionUserData):
+        return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     data = request.get_json() or {}
     window = data.get("window")
     if not window:
@@ -470,9 +501,46 @@ def dev_tools_clear():
 
 @app.route("/dev-tools/promote", methods=["POST"])
 def dev_tools_promote():
+    """Promote is a privileged operator action; require logged-in user (matches /close-window pattern).
+    Primary surface (AccountPage) + docs now route through these; auth added for safety.
+    """
+    sessionUserData = session.get("user")
+    if not User.validateUser(sessionUserData):
+        return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     data = request.get_json() or {}
     window = data.get("window") or Database.getCurrentVotingWindowId()
     res = Database.promoteWinnersFromWindow(window)
+    return jsonify(res)
+
+
+@app.route("/dev-tools/reset-user", methods=["POST"])
+def dev_tools_reset_user():
+    """Reset votes for one specific user in a window. Powerful for targeted testing cleanup."""
+    sessionUserData = session.get("user")
+    if not User.validateUser(sessionUserData):
+        return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    data = request.get_json() or {}
+    window = data.get("window")
+    user_id = data.get("user_id") or data.get("uid")
+    if not window or not user_id:
+        return jsonify({"success": False, "error": "window and user_id required"}), 400
+    res = Database.reset_user_votes(window, user_id)
+    return jsonify(res)
+
+
+@app.route("/dev-tools/set-window", methods=["POST"])
+def dev_tools_set_window():
+    """Allow the operator surface to set or clear a temporary current-window override.
+    Used from the Target Window text box on /account so testers can point the whole site
+    (Vote page, ballot, etc.) at a specific window (including empty/test windows).
+    """
+    sessionUserData = session.get("user")
+    if not User.validateUser(sessionUserData):
+        return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    data = request.get_json() or {}
+    window = data.get("window") or data.get("windowId")
+    # empty / null / "clear" clears the override
+    res = Database.setCurrentVotingWindowOverride(window if window and str(window).strip() else None)
     return jsonify(res)
 
 
@@ -544,6 +612,14 @@ def register():
 def reset():
     htmlString = ResetPage.render(session.get("user"))
     return htmlString
+
+@app.route('/admin')
+def admin():
+    """Operator entrypoint — delegates to the rich live Account page which now contains
+    the full real-time Operator & Dev Tools control surface (seed, clear, promote, inspection).
+    This fulfills the request that the website itself be the primary frictionless place to do everything.
+    """
+    return redirect(url_for('account'))
 
 @app.route('/vote')
 def vote():

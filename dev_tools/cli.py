@@ -1,21 +1,26 @@
 """
-Internet Party Dev Tools CLI (per approved plan Phase 2).
+Internet Party Dev Tools CLI (secondary power tool).
 
-Agent-first direct execution of dev/admin operations.
+PRIMARY EXPERIENCE: Use the live website instead.
+  1. Run the main site: pipenv run python -m PlotterApp   (or python PlotterApp.py)
+  2. Open http://localhost:5000/account  (log in or register)
+  3. Scroll to "Operator & Dev Tools — Live Control Surface" at bottom.
+     Seed, clear, promote, inspect windows/tallies — all in real time in your browser.
+     No separate commands or dashboards needed for 95% of operator work.
 
-Usage examples (from repo root):
-    python -m dev_tools.cli list-windows
-    python -m dev_tools.cli seed --window 2026-W21 --count 5
-    python -m dev_tools.cli clear --window 2026-DEV-01 --confirm
-    python -m dev_tools.cli simulate --window 2026-W21
-    python -m dev_tools.cli promote --window 2026-W21
+This CLI is the agent/script-friendly secondary interface. All mutations delegate to Database.py.
 
-All commands use the exact same Database.py helpers as the web UI and Prefab dashboards.
-Requires the Firebase service account (or will use snapshot for read-only commands).
+Usage examples (from repo root, after `pipenv install`):
+    pipenv run python -m dev_tools.cli list-windows
+    pipenv run python -m dev_tools.cli seed --window 2026-W21 --count 5
+    pipenv run python -m dev_tools.cli clear --window 2026-DEV-01 --confirm
+    pipenv run python -m dev_tools.cli simulate --window 2026-W21
+    pipenv run python -m dev_tools.cli promote --window 2026-W21
+
+Requires the Firebase service account JSON at /Users/pranav/data/... (falls back to snapshot for reads).
 """
 
 import argparse
-import os
 import sys
 from pathlib import Path
 
@@ -76,36 +81,6 @@ def cmd_promote(args):
     res = Database.promoteWinnersFromWindow(args.window)
     print(res)
 
-
-def cmd_open_window(args):
-    _ensure_firebase()
-    # Forcing the window for this process + hint for the whole site
-    os.environ["INTERNET_PARTY_TEST_WINDOW"] = args.window
-    print(f"Test window forced to {args.window} for this CLI session.")
-    print("Any subsequent calls (seed, clear, promote, or running the Flask app with the same env) will see this as the current window.")
-    print("Tip for the web UI:  INTERNET_PARTY_TEST_WINDOW={} python -m PlotterApp".format(args.window))
-
-
-def cmd_close_window(args):
-    _ensure_firebase()
-    print(f"Closing window {args.window}...")
-    if args.promote:
-        res = Database.promoteWinnersFromWindow(args.window)
-        print("Promote result:", res)
-    else:
-        print("(No --promote flag — only marking the window closed conceptually. Candidates stay until promoted.)")
-    print("Window closed for testing purposes.")
-
-
-def cmd_reset_window(args):
-    _ensure_firebase()
-    if not args.confirm:
-        print("ERROR: --confirm is required (this deletes the votes/participation for the window).")
-        print("The candidate policies and amendments are left untouched so you can vote the same ballot again.")
-        sys.exit(1)
-    res = Database.reset_window_for_retest(args.window, confirm=True)
-    print(res.get("message", res))
-
 def main():
     parser = argparse.ArgumentParser(
         prog="python -m dev_tools.cli",
@@ -133,20 +108,6 @@ def main():
     p_prom = sub.add_parser("promote", help="Promote winners from a window to official (real production path)")
     p_prom.add_argument("--window", required=True)
     p_prom.set_defaults(func=cmd_promote)
-
-    p_open = sub.add_parser("open-window", help="Force a specific window ID as 'current' for dev/testing (affects CLI + web when env is set)")
-    p_open.add_argument("--window", required=True, help="e.g. 2026-DEV-07 or 2026-W21")
-    p_open.set_defaults(func=cmd_open_window)
-
-    p_close = sub.add_parser("close-window", help="Close a voting window (optionally promote winners)")
-    p_close.add_argument("--window", required=True)
-    p_close.add_argument("--promote", action="store_true", help="Also run promotion of winners")
-    p_close.set_defaults(func=cmd_close_window)
-
-    p_reset = sub.add_parser("reset-window", help="Reset votes/participation for a window (candidates stay — perfect for re-testing the same ballot)")
-    p_reset.add_argument("--window", required=True)
-    p_reset.add_argument("--confirm", action="store_true", help="Must pass to actually clear the votes")
-    p_reset.set_defaults(func=cmd_reset_window)
 
     args = parser.parse_args()
     args.func(args)

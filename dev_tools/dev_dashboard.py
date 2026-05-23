@@ -1,30 +1,21 @@
 """
-Internet Party — Dev Tools Dashboard (Full Implementation per approved plan)
+Internet Party — Dev Tools Dashboard (Prefab visual layer — SECONDARY)
 
-This is the primary agent-friendly Dev Tools Prefab app.
+PRIMARY WAY TO DO EVERYTHING: Use the main website (real-time, zero friction).
+  Run the site: pipenv run python PlotterApp.py
+  Visit: http://localhost:5000/account  (login) → scroll to Operator Tools section.
+  Seed / clear / promote / inspect live ballot / tallies / windows — all buttons update the live site instantly.
+
+This Prefab dashboard is a nice optional visual companion for agents who prefer a separate UI.
 
 RUN (from repo root):
     pipenv run prefab serve dev_tools/dev_dashboard.py
-    # or with reload:
     pipenv run prefab serve dev_tools/dev_dashboard.py --reload --port 5176
 
-It is intentionally self-contained for one-command execution by humans or agents.
-Falls back gracefully to the provided database_snapshot when the Firebase Admin
-service account JSON is not present (common in agent sandboxes).
+Self-contained, falls back to snapshot when no service account.
 
-Capabilities implemented:
-- List all voting windows (live + snapshot fallback)
-- Clear all votes for a window (with safety)
-- Seed realistic synthetic test votes against the live/current ballot
-- Simulate agentic election flows (seed → view tallies)
-- Quick stats from policies/amendments
-- Uses existing Database.py helpers + new dev tools methods (no duplication)
-
-Live mutations require the service account at the standard PlotterApp path.
-The dashboard always displays current data source (live vs snapshot).
-
-Follows exact existing patterns: imports Database, uses same orange accent,
-no new features beyond plan, beautiful Prefab dashboard layout.
+All actions ultimately call the same Database helpers as the website + CLI.
+See the website /account Operator panel for the canonical live control surface.
 """
 
 import json
@@ -238,14 +229,7 @@ with PrefabApp(
                     Text("pipenv run python -m dev_tools.cli clear --window 2026-W21 --confirm", css_class="font-mono text-xs bg-muted p-1 rounded")
                     Text("pipenv run python -m dev_tools.cli promote --window 2026-W21", css_class="font-mono text-xs bg-muted p-1 rounded")
 
-                Text("2. Voting Window Lifecycle (exactly what you asked for — open/close/reset for rapid testing):", css_class="font-semibold mt-3")
-                with Column(gap=1):
-                    Text("export INTERNET_PARTY_TEST_WINDOW=2026-DEV-07   # then run the web app or any CLI command", css_class="font-mono text-xs bg-muted p-1 rounded")
-                    Text("python -m dev_tools.cli open-window --window 2026-DEV-07", css_class="font-mono text-xs bg-muted p-1 rounded")
-                    Text("python -m dev_tools.cli reset-window --window 2026-DEV-07 --confirm   # clears votes only — candidates stay for re-vote", css_class="font-mono text-xs bg-muted p-1 rounded")
-                    Text("python -m dev_tools.cli close-window --window 2026-DEV-07 --promote", css_class="font-mono text-xs bg-muted p-1 rounded")
-
-                Text("3. Live HTTP endpoints (call these from the browser console or your own scripts while this dashboard is open — the data will update on refresh):", css_class="font-semibold mt-3")
+                Text("2. Live HTTP endpoints (call these from the browser console or your own scripts while this dashboard is open — the data will update on refresh):", css_class="font-semibold mt-3")
                 with Column(gap=1):
                     Text("fetch('/dev-tools/seed', {method:'POST', body: JSON.stringify({window:'2026-W21', count:5})}).then(r=>r.json()).then(console.log)", css_class="font-mono text-[10px] bg-muted p-1 rounded")
                     Text("fetch('/dev-tools/promote', {method:'POST', body: JSON.stringify({window:'2026-W21'})}).then(r=>r.json()).then(console.log)", css_class="font-mono text-[10px] bg-muted p-1 rounded")

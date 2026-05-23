@@ -1,6 +1,5 @@
 from firebase_admin import db
 from datetime import datetime
-import os
 import random
 import uuid
 
@@ -21,19 +20,35 @@ VOTE_NO = "no"
 VOTE_ABSTAIN = "abstain"
 
 def getCurrentVotingWindowId():
-    """Returns e.g. '2026-W17' — natural weekly bucket matching 'Weekly (on Sunday)' MetaPolicy.
-
-    For dev / penetration testing you can force a specific window with:
-        export INTERNET_PARTY_TEST_WINDOW=2026-DEV-03
-    The entire site (ballot, tallies, /vote, etc.) will treat that ID as "current".
-    In production this env var is never set.
+    """Returns the effective current voting window.
+    If an operator has set a manual override via the Account page Dev Tools,
+    that value is returned instead of the real ISO week. This powers targeted
+    testing (empty ballots, historical windows, etc.).
     """
-    forced = os.environ.get("INTERNET_PARTY_TEST_WINDOW")
-    if forced:
-        return forced.strip()
+    # Operator override takes precedence (stored in meta/ for simplicity)
+    try:
+        override = db.reference("meta/currentWindowOverride").get()
+        if override and isinstance(override, str) and override.strip():
+            return override.strip()
+    except Exception:
+        pass  # fall back to real week if Firebase not ready or permission issue
+
     now = datetime.now()
     year, week, _ = now.isocalendar()
     return f"{year}-W{week:02d}"
+
+def setCurrentVotingWindowOverride(windowId):
+    """Store (or clear) a manual override for the current voting window.
+    Pass None or empty string to clear the override.
+    """
+    ref = db.reference("meta/currentWindowOverride")
+    if windowId and str(windowId).strip():
+        val = str(windowId).strip()
+        ref.set(val)
+        return {"success": True, "window": val, "message": f"Current window override set to {val}"}
+    else:
+        ref.delete()
+        return {"success": True, "window": None, "message": "Current window override cleared (using real ISO week)"}
 
 def isVotingOpen(window_id=None):
     """MVP: always True when there are candidate items (the ballot exists).
@@ -454,10 +469,16 @@ def recordUserBallot(user, windowId, choicesDict):
     livePolicies, liveAmendments = getBallotItems()
     liveKeys = { _makeItemKey(p) for p in livePolicies } | { _makeItemKey(a) for a in liveAmendments }
 
+    # Build a complete ballot: any missing item (or untouched radio) defaults to ABSTAIN.
+    # This supports the UX where the page pre-selects Abstain on every item.
     cleanedChoices = {}
-    for itemKey, choice in (choicesDict or {}).items():
-        if itemKey in liveKeys and choice in (VOTE_YES, VOTE_NO, VOTE_ABSTAIN):
+    submitted = choicesDict or {}
+    for itemKey in liveKeys:
+        choice = submitted.get(itemKey)
+        if choice in (VOTE_YES, VOTE_NO, VOTE_ABSTAIN):
             cleanedChoices[itemKey] = choice
+        else:
+            cleanedChoices[itemKey] = VOTE_ABSTAIN   # default for untouched / omitted items
 
     if not cleanedChoices:
         return False, "No valid votes were submitted for current ballot items."
@@ -639,7 +660,7 @@ def get_window_details(windowId):
 def clear_window_votes(windowId, confirm=False):
     """NUCLEAR: Delete the entire voting/{windowId} subtree (participation + votes).
     Requires explicit confirm=True. Returns dict with result.
-    Used ONLY by Dev Tools. Never call from public site.
+    Called by the primary website operator surface (/account), /dev-tools/clear, CLI, and Prefab dashboards.
     """
     if not confirm:
         return {"success": False, "message": "Refused: set confirm=True to actually delete."}
@@ -652,14 +673,6 @@ def clear_window_votes(windowId, confirm=False):
         return {"success": True, "message": f"Cleared all data for window {windowId}"}
     except Exception as e:
         return {"success": False, "message": str(e)}
-
-
-def reset_window_for_retest(windowId, confirm=False):
-    """Exactly what testers need: clear only the votes + participation for a window
-    so you can cast fresh votes on the *same* set of candidate policies/amendments.
-    The candidates themselves are untouched. Requires confirm=True.
-    """
-    return clear_window_votes(windowId, confirm=confirm)
 
 
 def seed_test_votes(windowId, count=5, force=False):
@@ -708,6 +721,69 @@ def seed_test_votes(windowId, count=5, force=False):
         "windowId": windowId,
         "message": f"Seeded {created} synthetic vote(s) for {windowId}"
     }
+
+
+def seed_synthetic_choice_votes(windowId, choice, count=3, force=True):
+    """Create `count` synthetic DEVTEST users that all cast the exact same `choice`
+    (VOTE_YES / VOTE_NO / VOTE_ABSTAIN) on every item currently on the ballot.
+    This gives deterministic, reproducible test data ("send 5 yes votes to all items").
+    """
+    policies, amendments = getBallotItems()
+    if not policies and not amendments:
+        return {"success": False, "message": "No candidate items on ballot to vote on."}
+
+    live_keys = [f"policy-{p.getId()}" for p in policies] + [f"amendment-{a.getId()}" for a in amendments]
+    if not live_keys:
+        return {"success": False, "message": "No valid item keys."}
+
+    # Normalize common representations (frontend sends 1/0/-1, we also accept strings)
+    choice_map = {
+        1: VOTE_YES, "1": VOTE_YES, "yes": VOTE_YES, "YES": VOTE_YES,
+        0: VOTE_NO, "0": VOTE_NO, "no": VOTE_NO, "NO": VOTE_NO,
+        -1: VOTE_ABSTAIN, "-1": VOTE_ABSTAIN, "abstain": VOTE_ABSTAIN, "ABSTAIN": VOTE_ABSTAIN,
+    }
+    if choice in choice_map:
+        choice = choice_map[choice]
+
+    if choice not in (VOTE_YES, VOTE_NO, VOTE_ABSTAIN):
+        return {"success": False, "message": "Invalid choice. Use 1 (yes), 0 (no), or -1 (abstain)."}
+
+    created = 0
+    for i in range(count):
+        fake_uid = f"DEVTEST-{windowId}-CHOICE-{choice}-{i:03d}"
+        if not force and hasUserVotedInWindow(fake_uid, windowId):
+            continue
+        choices = {k: choice for k in live_keys}
+        now = datetime.now().timestamp()
+        email = f"devtest-choice{i}@example.com"
+        db.reference(f"voting/{windowId}/participation/{fake_uid}").set({
+            "voted_at": now, "email": email, "windowId": windowId, "synthetic": True
+        })
+        db.reference(f"voting/{windowId}/votes/{fake_uid}").set({
+            "userId": fake_uid, "email": email, "windowId": windowId,
+            "choices": choices, "submitted_at": now, "synthetic": True
+        })
+        created += 1
+
+    choice_name = {VOTE_YES: "YES", VOTE_NO: "NO", VOTE_ABSTAIN: "ABSTAIN"}.get(choice, str(choice))
+    return {
+        "success": True,
+        "created": created,
+        "windowId": windowId,
+        "message": f"Seeded {created} synthetic {choice_name} vote(s) for {windowId}"
+    }
+
+
+def reset_user_votes(windowId, user_id):
+    """Completely remove a specific user's votes and participation record in a window.
+    Used for targeted test cleanup / reset.
+    """
+    try:
+        db.reference(f"voting/{windowId}/participation/{user_id}").delete()
+        db.reference(f"voting/{windowId}/votes/{user_id}").delete()
+        return {"success": True, "message": f"Reset all votes/participation for user {user_id} in window {windowId}"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 
 def get_policies_summary():

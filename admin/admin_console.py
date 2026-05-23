@@ -1,26 +1,21 @@
 """
-Internet Party — Admin Console (Full "God View" per approved plan)
+Internet Party — Admin Console (Prefab "God View" — SECONDARY / read-mostly companion)
 
-Primary read-mostly administration dashboard for the real party.
+PRIMARY OPERATOR EXPERIENCE (what the user asked for):
+  Use the website itself for live everything.
+  - pipenv run python PlotterApp.py
+  - http://localhost:5000/account (log in)
+  - Full live windows, tallies, ballot, seed/clear/promote buttons that mutate in real time
+    and you see the effects on the same page + across /vote /policy etc.
+
+This Prefab console is the rich audit / history god-view for when you want a separate dedicated dashboard.
 
 RUN:
     pipenv run prefab serve admin/admin_console.py
     pipenv run prefab serve admin/admin_console.py --reload
 
-Features (implemented):
-- All Voting Windows History with participation/vote counts + drill links (tables)
-- Per-window detail: every vote cast (uid/email/choices/timestamp) — full audit
-- Current Ballot + live tallies (re-uses Database.getBallotItems + getWindowTallies)
-- Elected / Official Platform summary
-- Pending ballot items + quick promote example
-- Raw DB stats (policy/amendment counts across statuses)
-- Prominent "Operator Actions" with safe documented examples that call the real promoteWinnersFromWindow etc.
-- Always shows whether connected to live RTDB or snapshot demo
-
-Beautiful Prefab dashboard using the party orange theme. Imports only existing Database + helpers.
-No scope creep. Follows plan exactly. Buttons surface the exact python one-liners agents/humans should run.
-
-This + dev_dashboard.py together fulfill the "I cant even run them" requirement.
+All data + actions delegate to the same Database.py as the main site.
+See /account on the live site for the frictionless "just use the website" operator surface.
 """
 
 import json

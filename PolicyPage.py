@@ -20,21 +20,32 @@ def render(user):
     window = Database.getCurrentVotingWindowId()
     ballot_count = len(canidates) + len(canidateAmendments)
 
-    # Prepare rich card data (title + excerpt + id + kind)
+    # Prepare rich card data (title + excerpt + id + kind + sortable date)
     def _prep_cards(items, kind, status):
         out = []
         for it in items:
             title = getattr(it, 'policyTitle', None) or it.getTitle()
             desc = getattr(it, 'policyDescription', None) or it.getDescription() or ""
             excerpt = (desc[:220] + "…") if len(desc) > 220 else desc
-            pid = getattr(it, 'policyId', None) or it.getId()
+            iid = it.getId()
+
+            # Prefer updatedTimestamp (when the item was last touched), fall back to created
+            ts = getattr(it, 'updatedTimestamp', None)
+            if not ts:
+                ts = getattr(it, 'createdTimestamp', 0)
+            try:
+                ts = float(ts)
+            except (TypeError, ValueError):
+                ts = 0.0
+
             out.append({
-                "id": pid,
+                "id": iid,
                 "title": title,
                 "excerpt": excerpt,
                 "kind": kind,
                 "status": status,
-                "url": f"/detail/{pid}" if kind == "policy" else f"/detail/amendment/{pid}"
+                "url": f"/detail/{iid}" if kind == "policy" else f"/detail/amendment/{iid}",
+                "sortTimestamp": ts
             })
         return out
 
@@ -43,6 +54,9 @@ def render(user):
     lib_items += _prep_cards(canidateAmendments, "amendment", "Candidate")
     lib_items += _prep_cards(policies, "policy", "Official")
     lib_items += _prep_cards(amendments, "amendment", "Official")
+
+    # Default render order = Newest first (policies use policy date, amendments use amendment date)
+    lib_items.sort(key=lambda x: x.get("sortTimestamp", 0), reverse=True)
 
     return render_template_string('''
         <!doctype html>
@@ -140,10 +154,19 @@ def render(user):
                 box-shadow: 0 2px 4px rgba(0,0,0,0.03);
                 display: flex;
                 flex-direction: column;
+                cursor: pointer;
+                transition: border-color .1s ease, box-shadow .1s ease;
+                overflow-wrap: break-word;
+            }
+            .lib-card:hover {
+                border-color: #ff6600;
+                box-shadow: 0 4px 10px rgba(255,102,0,0.08);
             }
             .lib-card h4 {
                 margin: 0 0 8px;
                 font-size: 1.05em;
+                overflow-wrap: break-word;
+                word-break: break-word;
             }
             .lib-card .meta {
                 font-size: 0.78em;
@@ -156,6 +179,8 @@ def render(user):
                 color: #444;
                 line-height: 1.4;
                 margin-bottom: 12px;
+                overflow-wrap: break-word;
+                word-break: break-word;
             }
             .status-pill {
                 display: inline-block;
@@ -188,7 +213,6 @@ def render(user):
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item.active">Policy</a>
-                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
@@ -216,46 +240,26 @@ def render(user):
                     <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All</button>
                     <button class="filter-btn" data-filter="Candidate" onclick="setFilter('Candidate', this)">On the Ballot (Candidate)</button>
                     <button class="filter-btn" data-filter="Official" onclick="setFilter('Official', this)">Official Platform</button>
-                    <button class="filter-btn" data-filter="Draft" onclick="setFilter('Draft', this)">My Drafts (private)</button>
                     <button class="filter-btn" data-filter="policy" onclick="setFilter('policy', this)">Policies only</button>
                     <button class="filter-btn" data-filter="amendment" onclick="setFilter('amendment', this)">Amendments only</button>
                 </div>
 
+                <div style="margin: 8px 0 12px; font-size:0.82em; color:#666;">
+                    Sort: <a href="#" onclick="sortLibrary('date'); return false;" id="sort-date" style="color:#ff6600;font-weight:600;text-decoration:none;margin-right:8px;">Newest</a>
+                    <a href="#" onclick="sortLibrary('title'); return false;" id="sort-title" style="color:#666;text-decoration:none;">A–Z</a>
+                </div>
+
                 <div class="card-grid" id="library-grid">
                     {% for item in lib_items %}
-                    <div class="lib-card" data-title="{{ item.title|lower }}" data-excerpt="{{ item.excerpt|lower }}" data-status="{{ item.status }}" data-kind="{{ item.kind }}">
+                    <div class="lib-card" data-title="{{ item.title|lower }}" data-excerpt="{{ item.excerpt|lower }}" data-status="{{ item.status }}" data-kind="{{ item.kind }}" data-url="{{ item.url }}" data-timestamp="{{ item.sortTimestamp }}" onclick="goToCardDetail(this, event)">
                         <h4><a href="{{ item.url }}">{{ item.title }}</a></h4>
                         <div class="meta">
                             <span class="status-pill status-{{ item.status }}">{{ item.status }}</span>
                             &nbsp;{{ item.kind|title }}
                         </div>
                         <div class="excerpt">{{ item.excerpt }}</div>
-                        <a href="{{ item.url }}" style="font-size:0.85em;color:#ff6600">View full text &amp; history →</a>
                     </div>
                     {% endfor %}
-
-                    {% if user %}
-                    {% for d in drafts %}
-                    {% if d and d.getTitle() %}
-                    <div class="lib-card" data-title="{{ (d.getTitle() or '')|lower }}" data-excerpt="{{ (d.getDescription() or '')[:200]|lower }}" data-status="Draft" data-kind="policy">
-                        <h4><a href="{{ url_for('drafts') }}">{{ d.getTitle() }}</a></h4>
-                        <div class="meta"><span class="status-pill status-Draft">Draft</span> Policy (yours)</div>
-                        <div class="excerpt">{{ (d.getDescription() or '')[:200] }}…</div>
-                        <a href="{{ url_for('drafts') }}" style="font-size:0.85em;color:#ff6600">Edit in Drafts hub →</a>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                    {% for d in draftAmends %}
-                    {% if d and d.getTitle() %}
-                    <div class="lib-card" data-title="{{ (d.getTitle() or '')|lower }}" data-excerpt="{{ (d.getDescription() or '')[:200]|lower }}" data-status="Draft" data-kind="amendment">
-                        <h4><a href="{{ url_for('drafts', amend=(d.getPolicyId() or '')) }}">{{ d.getTitle() }}</a></h4>
-                        <div class="meta"><span class="status-pill status-Draft">Draft</span> Amendment (yours)</div>
-                        <div class="excerpt">{{ (d.getDescription() or '')[:200] }}…</div>
-                        <a href="{{ url_for('drafts', amend=(d.getPolicyId() or '')) }}" style="font-size:0.85em;color:#ff6600">Edit in Drafts hub →</a>
-                    </div>
-                    {% endif %}
-                    {% endfor %}
-                    {% endif %}
                 </div>
 
                 <div id="empty-state" class="empty" style="display:none">
@@ -269,6 +273,8 @@ def render(user):
 
             <script>
                 let currentFilter = 'all';
+                let originalCardOrder = null;
+
                 function setFilter(f, btn) {
                     currentFilter = f;
                     document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -302,6 +308,59 @@ def render(user):
                     if (e.key === '/' && document.activeElement.tagName === 'BODY') {
                         e.preventDefault();
                         document.getElementById('search').focus();
+                    }
+                });
+
+                function goToCardDetail(cardEl, ev) {
+                    const e = ev || window.event;
+                    if (e) {
+                        const target = e.target || e.srcElement;
+                        if (target && target.closest('a, button')) {
+                            return;
+                        }
+                    }
+                    const url = cardEl.dataset.url;
+                    if (url) {
+                        window.location.href = url;
+                    }
+                }
+
+                function sortLibrary(mode) {
+                    const grid = document.getElementById('library-grid');
+                    const cards = Array.from(grid.querySelectorAll('.lib-card'));
+                    const dateLink = document.getElementById('sort-date');
+                    const titleLink = document.getElementById('sort-title');
+
+                    if (mode === 'title') {
+                        cards.sort((a, b) => (a.dataset.title || '').localeCompare(b.dataset.title || ''));
+                        dateLink.style.color = '#666';
+                        dateLink.style.fontWeight = 'normal';
+                        titleLink.style.color = '#ff6600';
+                        titleLink.style.fontWeight = '600';
+                    } else {
+                        // 'date' — real numeric sort, newest first (uses the item's own timestamp:
+                        // policy cards use the policy's updated/created date, amendment cards use the amendment's)
+                        cards.sort((a, b) => {
+                            const ta = parseFloat(a.dataset.timestamp || '0');
+                            const tb = parseFloat(b.dataset.timestamp || '0');
+                            return tb - ta;   // descending = newest on top
+                        });
+                        dateLink.style.color = '#ff6600';
+                        dateLink.style.fontWeight = '600';
+                        titleLink.style.color = '#666';
+                        titleLink.style.fontWeight = 'normal';
+                    }
+
+                    cards.forEach(c => grid.appendChild(c));
+                    // Re-apply current filter/search after reorder
+                    filterLibrary();
+                }
+
+                // Capture the original server-provided order for "Newest" resets
+                document.addEventListener('DOMContentLoaded', function() {
+                    const grid = document.getElementById('library-grid');
+                    if (grid) {
+                        originalCardOrder = Array.from(grid.querySelectorAll('.lib-card'));
                     }
                 });
             </script>

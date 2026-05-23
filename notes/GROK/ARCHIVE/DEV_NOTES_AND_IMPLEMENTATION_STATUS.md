@@ -436,45 +436,71 @@ All decisions (window = ISO week, promotion threshold, immutable vote, manual cl
 
 **Runnability**: All tools now launch end-to-end. CLI performs real DB mutations. Prefab UIs are rich visual + exact command surfaces.
 
-See `/tmp/grok-impl-summary-f81d8a92.md` (and the updated review file) for complete status against the approved plan and reviewer issues.
+**2026-05-20 run (IMPL 4229ea13)**: Per explicit user feedback, the *main website* (/account Operator Tools panel) is now the canonical live, real-time control surface for everything (windows, ballot, tallies, seed/clear/promote). Login/Register fully revamped to production card+form standard. Amendment detail now shows original policy text *under* the proposed change for every status. Prefab/CLI remain excellent secondary tools but with updated docs that put the website first and give crystal-clear one-command instructions. "Just open the site and do it" is now true.
+
+See `/tmp/grok-impl-summary-4229ea13.md` for the full changed-files + operator run instructions for this delivery.
 
 **Next backlog items remain the older ones above (CSS consolidation, etc.).**
 
 ---
 
-## Phase 7 (May 2026) — Amendment Diff Experience + Drafts Hygiene + Voting Window Dev Controls
+## CURRENT OPEN POLISH & CORRECTNESS ITEMS (Documented per user request — May 2026)
 
-Delivered per the approved plan after the Phase 6 /implement --effort 3 close:
+**User explicitly asked:** "Id suggest documenting these in a todo, i hope you do that without me asking."  
+These four items were captured during the planning turn that put the agent into plan mode for orientation. They are the immediate follow-up work after the Login/Register revamp + live Operator Tools surface on /account.
 
-- **Rich amendment editor in Drafts hub** (the #1 user request):
-  - When creating or editing an amendment (`?amend=POLICY_ID` or existing draft amendment), the right pane now shows:
-    - Full **Original Policy** (read-only, scrollable).
-    - **Final Version** as the primary editable textarea (seeded from the original for new amendments so you edit the complete resulting text).
-    - "Show diff" checkbox that renders a clean live line-by-line diff (green adds, red deletes) using a tiny pure-JS implementation.
-  - "Final version is what matters most" principle followed exactly.
-  - Works for both new amendments from the Library and existing draft amendments.
+**Status legend:** Open | In Progress | Fixed | Wontfix
 
-- **DraftsPage hygiene**:
-  - Create button changed from large "Create new policy draft" (clipping) to compact "+ New draft".
-  - Button + empty states + header language generalized ("you can create anything" — policies or amendments).
-  - Removed every "Amend this →" from the Congressional Library / Policy tab cards (per explicit request: "we can amend by first selecting the policy").
-  - Post-submit success state now offers "Refresh drafts list" + the "Start another" action reloads so the submitted item disappears from the left sidebar.
+### 1. Amendment Detail page — Remove duplicate Targets/Original box + fix title typography
+- **Files:** `DetailAmendmentPage.py`
+- **Exact user feedback:** Keep the nice grey "Targets Policy" box (preview of existing policy). Remove the second "Original Policy Text" box that appears for draft / canidate / official. Place the single Targets Policy box **below the amendment description**. Title of the amendment must be bigger/bolder/black than the "Amendment Detail" label; keep the grey treatment for the target policy part.
+- **Why it matters:** Current page has visual duplication and weak title hierarchy. The single box + proper typography gives the clean "before/after" experience when viewing any amendment.
+- **Status:** Open
+- **Related plan work package:** WP1
 
-- **Detail endpoints**:
-  - `/detail/amendment/<id>` received a prominent "Best experience in the new Drafts hub" callout with direct link (the hub now has the full diff UI).
-  - Menu consistency restored (Drafts item when logged in).
-  - Original target policy was already shown; now clearly labeled and the flow directs users to the rich editor.
+### 2. Login screen — Error message box should be conditional
+- **Files:** `LoginPage.py` + `static/js/login.js`
+- **Exact user feedback:** "there is always that box showing an error message on login. that box should only come if there is an actual error message."
+- **Current problem:** `#errorMessage` is rendered with `display:block` + `min-height` even when empty.
+- **Acceptance:** Fresh page load shows no box. Only a real failed login attempt (Firebase error or server) makes the red error box appear with text.
+- **Status:** Open
+- **Related plan work package:** WP2
 
-- **Dev tools for voting windows** (the second major user request):
-  - `Database.getCurrentVotingWindowId()` now respects `INTERNET_PARTY_TEST_WINDOW` env var (forces any ID, e.g. 2026-DEV-07, for the whole site + all tools).
-  - New `reset_window_for_retest(window, confirm=True)` — clears only votes/participation, leaves candidates intact.
-  - New CLI commands:
-    - `open-window --window ID`
-    - `close-window --window ID [--promote]`
-    - `reset-window --window ID --confirm`
-  - Dev dashboard (`dev_tools/dev_dashboard.py`) updated with the exact commands and explanations right next to the other tools.
-  - All reuse the existing real Database helpers (no stubs).
+### 3. Operator / Admin action buttons — Result box only for real messages + proper feedback text
+- **Files:** `AccountPage.py` (the 🛠️ Operator & Dev Tools live panel)
+- **Exact user feedback:** For actions like "Reset Specific User Votes", leaving the input blank (or cancelling the prompt) still makes the result box appear (often blank). "its ok to have the box we just dont want it to show up blank only show it if there is actually a message and if you have to create messages for these cases i am doing in the admin buttons specifically"
+- **Current problem:** `showOpResult()` forces the box visible; some paths produce empty or technical strings.
+- **Acceptance:** Blank/cancel paths never surface the box. Every real operator action (seed variants, clear, promote, reset-user) always produces a clear, human-readable one-line success or error message. The box only becomes visible when it has content.
+- **Status:** Open
+- **Related plan work package:** WP3
 
-All changes are minimal, respect the "canidate" spelling, duplicated menu pattern, and the pure Flask render_template_string architecture. The primary drafting flow now feels first-class and professional, and testers have god-mode control over the weekly vote cycle exactly as requested.
+### 4. Policy Detail page revamp — Clean amendment history + candidate amendments sections for official & canidate policies
+- **Files:** `DetailPage.py` (+ possible small helper in `Database.py`)
+- **Exact user feedback (condensed):**
+  - "revamp the policy detail page. For official or canidate policies, we need to make it cleaner to see the amendment history on the same page."
+  - For official policies (main text already updated by enacted amendments): show history so users can click an amendment and "see the diff properly" on the amendment detail page.
+  - "If an official policy has a canidate amendment then put that there too… a section still at bottom of page but above the history section with official amendments. this can be the canidate amendments section."
+  - "for canidate policies, they can also have amendments. obviously they can only have canidate amendments."
+  - "pressing on an amendment will just take you to detail page."
+  - "maybe also implement the diff i was talking about correctly."
+- **Current state:** DetailPage is still the old bare-bones version. No amendment lists or history at all.
+- **Acceptance criteria:**
+  - Official policy detail shows: current (post-enactment) text + "Pending Candidate Amendments" section (if any) + "Amendment History" (enacted amendments on this policy).
+  - Canidate policy detail shows its related canidate amendments.
+  - Every listed amendment is a nice clickable entry that lands on `/detail/amendment/<id>`.
+  - The cleaned-up amendment detail page (item 1) provides the practical diff view via the single "Targets Policy" box placed under the amendment text.
+- **Status:** Open
+- **Related plan work package:** WP4
 
-**Status**: Implementation complete for Phase 7. Ready for user testing / next /implement loop if desired.
+**Notes for implementers**
+- Keep the "canidate" spelling everywhere.
+- Match the exact recent visual language (`.detail-header`, `.detail-card`, `.target-policy` grey box, status pills, orange #ff6600 accents, action bars).
+- Preserve all legacy form IDs and JS contracts on detail pages.
+- After each item is fixed, update its Status line in this section to "Fixed" with the date and brief note.
+- This section lives at the end of the file so it is the single source of truth for the current user-driven polish backlog.
+
+**Plan file for this work:** The session plan at `.../019e4149-.../plan.md` was fully rewritten during this planning turn to reflect exactly these four items (old plan was from an earlier diff/CLI phase and is now superseded for orientation).
+
+---
+
+**End of current documented todos.** When the user says an item is done, mark it Fixed here and (if desired) run a short verification pass.

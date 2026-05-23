@@ -17,14 +17,27 @@ def render(user):
         out = []
         for it in items:
             key = f"{kind}-{it.getId()}"
-            out.append({
+            item_dict = {
                 "key": key,
                 "id": it.getId(),
                 "title": it.getTitle(),
                 "description": it.getDescription()[:400] + ("..." if len(it.getDescription()) > 400 else ""),
                 "kind": kind,
                 "userChoice": ballot.getUserChoice(key) if ballot else None,
-            })
+            }
+            if kind == "amendment":
+                pid = it.getPolicyId() if hasattr(it, "getPolicyId") else ""
+                ptitle = ""
+                if pid:
+                    try:
+                        p = Database.getPolicy(user, pid)
+                        if p and hasattr(p, "getTitle"):
+                            ptitle = p.getTitle() or ""
+                    except Exception:
+                        pass
+                item_dict["targetPolicyId"] = pid
+                item_dict["targetPolicyTitle"] = ptitle
+            out.append(item_dict)
         return out
 
     policyItems = _prep(policies, "policy")
@@ -113,6 +126,8 @@ def render(user):
                 border-radius: 4px;
                 font-size: 0.9em;
                 white-space: pre-wrap;
+                word-wrap: break-word;
+                overflow-x: auto;
             }
             .vote-controls {
                 display: flex;
@@ -180,7 +195,6 @@ def render(user):
             <!-- Menu bar (exact pattern used on every page) -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item">Policy</a>
-                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item.active">Vote</a>
@@ -199,7 +213,7 @@ def render(user):
                 {% if not hasLiveBallot %}
                     <div class="empty-state">
                         <h3>No items are currently on the ballot</h3>
-                        <p>Submit drafts from your Account or the top-nav Drafts hub (visible when logged in), then have them advanced to <em>canidate</em> status. They will appear here automatically for the next weekly vote.</p>
+                        <p>Submit drafts from your Account or the Drafts hub (open it from your Account), then have them advanced to <em>canidate</em> status. They will appear here automatically for the next weekly vote.</p>
                         <p><a href="{{ url_for('drafts') }}">Go to Drafts hub →</a></p>
                     </div>
                 {% else %}
@@ -210,7 +224,7 @@ def render(user):
                         {% for item in policyItems %}
                             <div class="ballot-item" data-item-key="{{ item.key }}">
                                 <h4><a href="{{ url_for('detail', policyId=item.id) }}">{{ item.title }}</a></h4>
-                                <div class="meta">Policy • ID: {{ item.id }}</div>
+                                <div class="meta">Policy</div>
                                 <pre>{{ item.description }}</pre>
 
                                 {% if item.userChoice %}
@@ -219,7 +233,7 @@ def render(user):
                                     <div class="vote-controls">
                                         <label><input type="radio" name="vote-{{ item.key }}" value="yes"> Yes — Promote to Official Platform</label>
                                         <label><input type="radio" name="vote-{{ item.key }}" value="no"> No</label>
-                                        <label><input type="radio" name="vote-{{ item.key }}" value="abstain"> Abstain</label>
+                                        <label><input type="radio" name="vote-{{ item.key }}" value="abstain" checked> Abstain</label>
                                     </div>
                                 {% endif %}
 
@@ -238,7 +252,7 @@ def render(user):
                         {% for item in amendmentItems %}
                             <div class="ballot-item" data-item-key="{{ item.key }}">
                                 <h4><a href="{{ url_for('detail_amendment', amendmentId=item.id) }}">{{ item.title }}</a></h4>
-                                <div class="meta">Amendment • Targets policy: {{ item.id.split('-',1)[1] if '-' in item.id else item.id }}</div>
+                                <div class="meta">Amendment{% if item.targetPolicyTitle %} to <a href="{{ url_for('detail', policyId=item.targetPolicyId) }}">{{ item.targetPolicyTitle }}</a>{% endif %}</div>
                                 <pre>{{ item.description }}</pre>
 
                                 {% if item.userChoice %}
@@ -247,7 +261,7 @@ def render(user):
                                     <div class="vote-controls">
                                         <label><input type="radio" name="vote-{{ item.key }}" value="yes"> Yes — Promote to Official Platform</label>
                                         <label><input type="radio" name="vote-{{ item.key }}" value="no"> No</label>
-                                        <label><input type="radio" name="vote-{{ item.key }}" value="abstain"> Abstain</label>
+                                        <label><input type="radio" name="vote-{{ item.key }}" value="abstain" checked> Abstain</label>
                                     </div>
                                 {% endif %}
 

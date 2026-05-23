@@ -132,7 +132,6 @@ def render(user):
             <!-- Menu bar -->
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item">Policy</a>
-                {% if user %}<a href="{{ url_for('drafts') }}" class="menu-item">Drafts</a>{% endif %}
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item.active">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
@@ -151,7 +150,7 @@ def render(user):
                         <a href="{{ url_for('vote') }}" class="cta">Vote on the Current Ballot →</a>
                         <a href="{{ url_for('policy') }}" class="cta secondary">Browse the Congressional Library</a>
                         <a href="{{ url_for('drafts', new='policy') }}" class="cta secondary">Draft a New Policy</a>
-                        <a href="{{ url_for('account') }}" class="cta secondary">{{ 'Your Account &amp; History' if user else 'Login / Register' }}</a>
+                        <a href="{{ url_for('account') }}" class="cta secondary">{{ 'Your Account & History' if user else 'Login / Register' }}</a>
                     </div>
                     <p><a href="{{ url_for('monitor') }}" style="color:#ff6600;font-weight:600">→ Explore the Election Monitor (historical roots)</a></p>
                 </div>
