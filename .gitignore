@@ -1,10 +1,91 @@
+# Python / Pipenv
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-/az
-/co
-/ga
-/il
-/pa
-/ri
+# Virtualenvs (Pipenv creates .venv or uses PIPENV_VENV_IN_PROJECT)
+.venv/
+venv/
+ENV/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Logs and runtime data
+*.log
 monitor.log
 grapher.log
+firebase-debug.log
+
+# Election / legacy monitor data (2020-era, not part of core Internet Party)
+results.txt
+demResults.txt
+repResults.txt
+/az/
+/co/
+/ga/
+/il/
+/pa/
+/ri/
+countyResults.json
+
+# Chrome portable bundle (legacy scraping)
+chrome_install/
+
+# Node (node_relay.js is pure stdlib - no deps ever needed)
+node_modules/
+
+# Database snapshots / exports (use external backups)
+database_snapshot/
+
+# Test / cache
+.pytest_cache/
+.cache/
+.mypy_cache/
+.ruff_cache/
+
+# macOS / IDE / editor
 .DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-*
+
+# Environment / secrets (Firebase certs live in $DATA_FOLDER outside repo)
+.env
+.env.*
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!Pipfile.lock
+theinternetparty-*-firebase-adminsdk-*.json
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+
+# Project specific artifacts
+# (add more as needed)

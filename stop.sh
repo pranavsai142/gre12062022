@@ -1,1 +1,0 @@
-./kill_process.sh PresidentMonitor.py

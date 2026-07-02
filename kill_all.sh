@@ -3,7 +3,6 @@
 # Kills all processes related to the PlotterApp local dev setup:
 # - gunicorn (PlotterApp)
 # - node relay
-# - PresidentMonitor (rogue monitor)
 # - Anything listening on 5000/5001
 
 echo "=== Killing all PlotterApp / dev processes ==="
@@ -21,13 +20,11 @@ done
 echo "Killing by process name patterns..."
 pkill -9 -f "gunicorn.*PlotterApp" 2>/dev/null || true
 pkill -9 -f "node node_relay.js" 2>/dev/null || true
-pkill -9 -f "PresidentMonitor.py" 2>/dev/null || true
 pkill -9 -f "PlotterApp.py" 2>/dev/null || true
 
 # 3. Use existing kill helper if present
 if [[ -x "./kill_process.sh" ]]; then
   echo "Using kill_process.sh helper..."
-  ./kill_process.sh PresidentMonitor.py 2>/dev/null || true
   ./kill_process.sh gunicorn 2>/dev/null || true
 fi
 
@@ -43,5 +40,4 @@ else
 fi
 
 echo ""
-echo "Done. If the rogue monitor is still around, try:"
-echo "  pkill -9 -f PresidentMonitor"
+echo "Done."
