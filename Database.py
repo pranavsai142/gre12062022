@@ -605,7 +605,7 @@ def ensure_firebase_initialized():
     try:
         from firebase_admin import credentials, initialize_app
         import os
-        DATA_FOLDER = "/Users/pranav/data/"
+        DATA_FOLDER = os.getenv("DATA_FOLDER", "/Users/pranav/data/")
         SERVICE_ACCOUNT = DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json"
         if os.path.exists(SERVICE_ACCOUNT):
             cred = credentials.Certificate(SERVICE_ACCOUNT)

@@ -74,15 +74,32 @@ No `elections/` collection yet (the windowId + ISO week logic lives in code). Vo
 - `notes/GROK/ARCHIVE/` — Retired large artifacts (old 500-line dev notes live here now).
 
 ### How to Run (Canonical)
+
+**Production (Render / after SSH to box):**
 ```bash
-pipenv shell && pipenv install
-pipenv run python PlotterApp.py
-# then http://localhost:5000  → register/login → /account for Operator panel
+./start.sh
+# or
+pipenv run gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 4 PlotterApp:app
 ```
 
-Secondary: `python -m dev_tools.cli --help` and the prefab dashboards.
+**Local dev (persistent server, full LAN/network access with macOS firewall ON):**
+```bash
+export DATA_FOLDER=/path/with/cert   # if not /Users/pranav/data/
+./start_local_with_node_relay.sh
+```
+- Runs gunicorn on `127.0.0.1:5001` + Node TCP relay on `0.0.0.0:5000`.
+- Access locally: http://127.0.0.1:5000
+- Access from other devices on same network: http://YOUR_LAN_IP:5000
+- Firewall can stay enabled (no GUI entries or whitelist needed — Node is the public listener).
 
-Firebase admin cert is required at the path configured in `Database.py` / `DATA_FOLDER`.
+**Kill everything (gunicorn, relay, ports, rogue processes):**
+```bash
+./kill_all.sh
+```
+
+Secondary tools: `python -m dev_tools.cli --help` and prefab dashboards.
+
+Firebase admin cert required at `$DATA_FOLDER/theinternetparty-...json`.
 
 ## How to Work Here (Pragmatic Loop + Project Conventions)
 
@@ -103,6 +120,7 @@ Firebase admin cert is required at the path configured in `Database.py` / `DATA_
 - All new UI should match the recent visual language (`.detail-header`, `.detail-card`, status pills, orange #ff6600 accents, target-policy grey box).
 - Keep feedback conditional: only show result/error boxes when there is actually content.
 - For voting-related work, always think auditability + "one immutable vote per window" first.
+- Local dev network access: always use `./start_local_with_node_relay.sh` (gunicorn internal + Node relay). Keeps firewall ON and server persistently reachable on LAN. No whitelist or GUI firewall entries required.
 
 ## Next / Forward Backlog (Distilled — Short by Design)
 

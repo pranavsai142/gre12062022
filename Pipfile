@@ -11,8 +11,6 @@ packaging = "*"
 flask = "*"
 firebase-admin = "*"
 prefab-ui = "*"
+gunicorn = "*"
 
 [dev-packages]
-
-[requires]
-python_version = "3"

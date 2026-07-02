@@ -8,7 +8,7 @@ import sys
 import os
 import random
 
-DATA_FOLDER = "/data/"
+DATA_FOLDER = os.getenv("DATA_FOLDER", "/data/")
 def parseArguments():
     """
     Parse command-line arguments.

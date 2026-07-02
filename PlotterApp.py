@@ -18,7 +18,7 @@ from Ballot import Ballot
 from Vote import Vote, VOTE_YES, VOTE_NO, VOTE_ABSTAIN
 
 app = Flask(__name__)
-DATA_FOLDER = "/Users/pranav/data/"
+DATA_FOLDER = os.getenv("DATA_FOLDER", "/Users/pranav/data/")
 # DATA_FOLDER = "../"
 # Dictionary mapping state names to their abbreviations
 states = {
@@ -727,4 +727,8 @@ def delta(state):
     return send_file(img, mimetype='image/png')
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0")
+    # Respect env so we can disable reloader locally for more reliable firewall behavior
+    # while keeping identical behavior in prod (where start.sh runs it).
+    # Set FLASK_USE_RELOADER=0 to disable.
+    use_reloader = os.environ.get("FLASK_USE_RELOADER", "1") == "1"
+    app.run(host="0.0.0.0", use_reloader=use_reloader)
