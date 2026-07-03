@@ -152,7 +152,6 @@ def render(user):
                         <a href="{{ url_for('drafts', new='policy') }}" class="cta secondary">Draft a New Policy</a>
                         <a href="{{ url_for('account') }}" class="cta secondary">{{ 'Your Account & History' if user else 'Login / Register' }}</a>
                     </div>
-                    <p><a href="{{ url_for('monitor') }}" style="color:#ff6600;font-weight:600">→ Explore the Election Monitor (historical roots)</a></p>
                 </div>
 
                 <div class="stats">
