@@ -4,14 +4,14 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-matplotlib = "*"
 requests = "*"
-datetime = "*"
-packaging = "*"
 flask = "*"
 firebase-admin = "*"
 prefab-ui = "*"
 gunicorn = "*"
+
+[requires]
+python_version = "3.13"
 
 [dev-packages]
 pytest = "*"

@@ -161,3 +161,72 @@ See also:
 - `notes/GROK/handoffs/2026-06-21-playwright-npc-testing-scale-harness.md`
 - `npc/README.md`
 - `tests/README.md`
+
+## Production Deploy Shakeout & Approval Process (Auto-Deploy on main)
+
+Because Render auto-deploys on every push to `main`, we treat "merge to main" as the production release. The following is the required shakeout + approval flow. The testing layer (E2E + NPC harness) is the gate.
+
+### 1. Local Pre-Flight (do this before every push/PR)
+- `pipenv run pytest tests/e2e/ -q --browser chromium` (all 6 tests must pass).
+- For changes touching drafts, voting, tallies, or promotion: run at least one full cycle with the harness (small N is fine):
+  ```bash
+  pipenv run python -c '
+  from npc.scenarios import run_full_cycle
+  run_full_cycle(n_drafters=2, n_voters=10, cleanup=True)
+  '
+  ```
+- Manual smoke via `./start_local_with_node_relay.sh`:
+  - Register/login as operator.
+  - Use Operator panel + window override on `/account`.
+  - Submit drafts → promote flow, cast ballots, close+promote.
+  - Verify public `/vote` and results.
+
+### 2. CI Gate (required before merge)
+- Every PR must pass the `compile` job.
+- Once `FIREBASE_SERVICE_ACCOUNT` secret is added to the repo: the full `e2e` job runs on PRs and on main pushes (isolated windows + auto cleanup).
+- Do **not** merge to main until CI is green.
+
+### 3. Merge → Auto Deploy
+- Merge or push directly to `main` triggers Render build + deploy automatically.
+- Monitor the Render dashboard for:
+  - Successful build using the pipenv build command.
+  - Deploy complete.
+  - `/healthz` and `/healthz?deep=1` returning OK.
+
+### 4. Post-Deploy Production Shakeout (mandatory approval step)
+Run these **against the live deployed URL** after every auto-deploy before declaring it good:
+
+```bash
+# Full E2E + optional scale (uses TEST-/SCALE- windows only; safe on prod)
+RUN_SCALE=1 TARGET_BASE_URL=https://<your-service>.onrender.com \
+  pipenv run pytest tests/e2e/ -q -s --browser chromium
+```
+
+Operator manual verification (using real `/account` panel):
+- Set a fresh window override (e.g. `TEST-DEPLOY-2026-07-03`).
+- Create 1-2 drafts via the UI.
+- Promote them to canidate (or use dev-tools).
+- Cast several ballots (YES/NO/ABSTAIN) from different logged-in sessions.
+- Close the window and Promote Winners.
+- Confirm exact tallies, immutable "you already voted", and that winners moved to official.
+- Clear the override when done. Run cleanup if any stray data.
+
+Check Render logs for errors, 5xx, or import/runtime issues.
+
+### 5. Approval & Rollback
+- Only after steps 1-4 pass cleanly is the deploy "approved".
+- If issues: Use Render's instant "Rollback" to previous successful deploy.
+- Or `git revert` + push (triggers new deploy of the prior good state).
+
+### Enabling Strong CI Coverage
+Add the `FIREBASE_SERVICE_ACCOUNT` secret (exact contents of your admin JSON) in GitHub → Settings → Secrets and variables → Actions. This unlocks the e2e job on PRs.
+
+### GitHub Branch Protection (strongly recommended)
+In repo Settings → Branches → main:
+- Require pull request before merging.
+- Require status checks (at least "compile"; "e2e" once secret is live).
+- Include administrators if desired.
+
+This combination gives you convenient auto-deploys while having real gates and a repeatable shakeout you (or future agents) can execute quickly.
+
+## Notes (continued)

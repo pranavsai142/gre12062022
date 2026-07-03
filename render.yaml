@@ -1,13 +1,20 @@
 # Render Blueprint for The Internet Party (Party No. 3)
 # https://render.com/docs/blueprint-spec
 #
-# Deploy: connect this repo in the Render dashboard (or "New > Blueprint").
-# Render builds on every git push to main and runs ./start.sh in the foreground.
+# Deploy via Blueprint (recommended) or as a manual Web Service.
 #
-# REQUIRED MANUAL STEP (one time): upload the Firebase admin service-account
-# JSON as a Secret File named exactly:
-#   theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
-# Render mounts secret files at /etc/secrets/, which DATA_FOLDER points at below.
+# For manual services, set in dashboard:
+#   Build Command: pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile
+#   Start Command: ./start.sh
+#
+# Python version: Set PYTHON_VERSION=3.13 as an environment variable in Render
+# (or rely on runtime.txt + the value below). runtime.txt declares python-3.13.
+#
+# Firebase: Upload the admin JSON as a Secret File with the exact name below.
+# It will be mounted at /etc/secrets/. Set DATA_FOLDER=/etc/secrets/
+#
+# REQUIRED: theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
+# (mounted by Render at /etc/secrets/)
 #
 # Scaling path (documented from the 2026-07 scale work):
 #   ~100 concurrent voters: this single instance (2 workers x 8 threads) is enough;
@@ -20,7 +27,7 @@ services:
     name: internet-party
     runtime: python
     plan: starter
-    buildCommand: pip install pipenv && pipenv install --deploy
+    buildCommand: pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile
     startCommand: ./start.sh
     healthCheckPath: /healthz
     envVars:
@@ -33,4 +40,4 @@ services:
       - key: GUNICORN_THREADS
         value: "8"
       - key: PYTHON_VERSION
-        value: "3.11"
+        value: "3.13"
