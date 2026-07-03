@@ -52,10 +52,42 @@ Or from Python/CLI:
 ```python
 from npc.npc_manager import NPCManager
 m = NPCManager()
-clients = m.provision_batch(25, prefix="npc-scale-")
+clients = m.provision_batch(25, prefix="npc-scale-", concurrency=10)
 for c in clients:
-    c.vote_all("yes")
+    c.vote_all("yes")          # fetches /ballot-items, builds the full choices map, casts one ballot
 ```
+
+### Run the Full-Cycle Scale Scenario (the flagship)
+
+```python
+from npc.scenarios import run_full_cycle
+metrics = run_full_cycle(base_url="http://127.0.0.1:5000",
+                         n_drafters=3, n_voters=100, concurrency=25,
+                         yes_fraction=0.6, no_fraction=0.25, cleanup=True)
+```
+
+Drafters propose real policies → N voters cast concurrent immutable ballots →
+integrity checks (exact tallies, double-vote rejection) → operator promote →
+metrics (p50/p95 latency, votes/sec, wall time). Or as a gated pytest:
+
+```bash
+# Against local gunicorn (start the app first via the relay script)
+RUN_SCALE=1 pipenv run pytest tests/e2e/test_scale_voting.py -q -s --base-url http://127.0.0.1:5000 --browser chromium
+
+# Against a deployed Render instance
+RUN_SCALE=1 TARGET_BASE_URL=https://<your-app>.onrender.com \
+  pipenv run pytest tests/e2e/test_scale_voting.py -q -s --browser chromium
+```
+
+**Safety rails (2026-07):** scenarios refuse non-`SCALE-`/`TEST-`/`E2E-` windows
+(override with `ALLOW_REAL_WINDOW=1`), and promotion is skipped automatically if
+real (non-scenario) canidate items are live on the ballot — so a scale run can
+never promote real policies by accident, even against production.
+
+**Validated baseline (2026-07-02, local gunicorn 1 worker × 4 threads):**
+100 concurrent voters completed in ~14s wall (7.3 votes/sec, p95 3.7s), 0 errors,
+tallies exact, double votes rejected, promotion correct. Production config
+(2 workers × 8 threads) has 4× the request parallelism.
 
 ## Recommended Workflow (When Changing Things)
 
@@ -94,28 +126,28 @@ Add the test in the same style as existing ones in `tests/e2e/`. Keep tests smal
 
 For scale/regression around "many users": add a scenario in the NPC harness or a lightweight scale test.
 
-## File Layout (After the 2026-06-21 delivery)
+## File Layout (After the 2026-07-02 production-readiness delivery)
 
 ```
 tests/
-  conftest.py          # live server + playwright fixtures + helpers
+  conftest.py          # live server + playwright fixtures + make_npc + auto NPC cleanup
   e2e/
-    test_smoke.py
-    test_auth_flows.py
-    test_draft_and_submit.py
-    ...
-    test_full_governance_cycle.py
+    test_smoke.py               # navigation basics
+    test_vote_flow.py           # real browser login → abstain default → cast → immutable
+    test_governance_cycle.py    # full cycle via NPC harness (small, always-on)
+    test_meta_enforcement.py    # server-side char limits + window gating
+    test_scale_voting.py        # 100 concurrent voters (gated by RUN_SCALE=1)
   README.md
 
 npc/
-  npc_client.py        # the actor that speaks the real API
-  npc_manager.py       # batch create/list/delete
+  npc_client.py        # the actor that speaks the real API (auth, drafts, /ballot-items, votes)
+  npc_manager.py       # concurrent batch create / batch delete
+  scenarios.py         # run_full_cycle + cleanup_scenario (shared by dashboard + tests)
   server.py            # dashboard + scenario runner on :5555
-  templates/
-    dashboard.html
   README.md
 
 pytest.ini
+.github/workflows/ci.yml  # compile check always; full E2E once FIREBASE_SERVICE_ACCOUNT secret is set
 TESTING.md             # this file
 ```
 

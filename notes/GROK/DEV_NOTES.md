@@ -1,6 +1,6 @@
 # DEV_NOTES — The Internet Party (Living Project Reality)
 
-**Last major update:** 2026-05-22 — Additional high-signal UX polish round on top of the 05-21 foundation: title+description visual diff with unchanged messages, simplified target-policy box, long-content hardening on cards & vote descriptions, Abstain as safe default for mandatory ballots, and real "Target Window" override in the live Operator panel (meta/currentWindowOverride + Set/Clear). Rich history in `handoffs/2026-05-22-post-polish-ux-operator-power.md`. This document stays deliberately short and forward-looking.
+**Last major update:** 2026-07-02 (evening) — **Production readiness + scale validation delivered.** Runtime hardened for Render (stable multi-worker SECRET_KEY, centralized loud-fail Firebase init, `/healthz`, foreground `start.sh`, `render.yaml` blueprint, token clock-skew tolerance, 401-not-500 on bad tokens). First MetaPolicies now bind server-side (title ≤100 / description ≤10,000 on all draft routes; ballots only accepted into the effective current window). NPC/E2E harness matured from scaffolding to real: fixed broken client/server, added `npc/scenarios.py` full-cycle runner + `/ballot-items` JSON route, 6 always-on E2E tests green, and a **validated 100-concurrent-voter run** (0 errors, exact tallies, double-votes rejected, promote correct, ~14s wall on local 1-worker gunicorn). Optional `OPERATOR_EMAILS` allowlist added. CI skeleton in `.github/workflows/ci.yml`. Full details in `handoffs/2026-07-02-production-readiness-scale-validation.md`. This document stays deliberately short and forward-looking.
 
 ## Current Big Picture
 
@@ -18,9 +18,7 @@ The project has delivered the **core governance engine** that was the #1 priorit
 
 The revolutionary heart — actual parallel voting with integrity — is functional. People can propose, amend, vote weekly, and see winners become official policy.
 
-**Dual nature of the repo** is still present:
-- The Internet Party platform (the soul).
-- 2020-era election data monitors/plots (PresidentMonitor, ElectionMonitor, state data dirs, chrome bundle for scraping). These are secondary but not abandoned.
+The repository is now focused exclusively on the Internet Party platform.
 
 **Next phase focus:** Polish & correctness (the four open items below), then enforcement of meta-policies (char limits, categories, sunset mechanics, etc.), and fleshing out the public-facing "Congressional Library" / About experience to match the quality of the delivered Vote and Account pages.
 
@@ -36,25 +34,25 @@ The revolutionary heart — actual parallel voting with integrity — is functio
 - **Always harden text containers early.** User-generated titles and descriptions will eventually contain long or unbreakable strings; adding `word-wrap: break-word`, `overflow-x: auto`, and `pre-wrap` on the first sign of trouble prevents surprising layout breakage on cards, ballot items, and diffs.
 - **Default to the required safe choice on mandatory forms.** Pre-selecting Abstain (and having the backend defensively default missing items) satisfies "every member must vote on every item" while making an untouched ballot a valid, low-friction submission.
 - **A real window override lever is extremely powerful.** Letting the operator type any window ID (including empty/test ones), hit Set/Enter, and have the *entire live site* (including public /vote) instantly reflect it is far more useful for testing and demos than parameter-only tools.
+- **Never use a per-process random Flask secret_key with gunicorn workers > 1.** Each worker rejects the others' session cookies → users randomly logged out. Use `SECRET_KEY` env (render.yaml generates one) or the deterministic cert-derived fallback in PlotterApp.
+- **`verify_id_token` needs `clock_skew_seconds`** — freshly minted tokens intermittently fail as "used too early" otherwise. And firebase-admin raises `InvalidIdTokenError` (a FirebaseError, *not* ValueError); catching only ValueError turns bad logins into 500s.
+- **Render start commands must run in the foreground.** A backgrounded gunicorn (`… &`) means the start script exits and the service is treated as crashed. Log to stdout for the Render stream.
+- **Scale scenarios must guard promotion.** The ballot is the *live* canidate pool, so an NPC electorate would promote real canidate items. `npc/scenarios.py` skips promote when foreign items are on the ballot; keep that guard.
+- **The testing layer is the delivery gate.** Every future change to routes/pages/governance: run `pipenv run pytest tests/e2e/ --browser chromium` (6 tests, ~30s) before and after; use the NPC full-cycle scenario for anything touching participation, tallies, or promotion (see TESTING.md).
 
 ## Information Architecture (Where Everything Actually Lives)
 
 ### Core Application
-- `PlotterApp.py` — THE app. All routes, Firebase bootstrap, session handling, `/validate-token`, every party endpoint (`/draft`, `/detail/<id>`, `/vote`, `/account`, `/submit-ballot`, operator actions, etc.). Also hosts the legacy monitor routes.
+- `PlotterApp.py` — THE app. All routes, Firebase bootstrap, session handling, `/validate-token`, every party endpoint (`/drafts`, `/detail/<id>`, `/vote`, `/account`, `/submit-ballot`, operator actions, etc.).
 - `Database.py` — All persistence. Policy/Amendment CRUD by type, voting window helpers (`getCurrentVotingWindowId`, `getBallotForUser`, `recordUserBallot`, `promoteWinnersFromWindow`, etc.), centralized Firebase init.
 - `Policy.py`, `Amendment.py`, `Vote.py`, `Ballot.py` — Domain classes with validation, serialization, tallies, winner logic.
-- `*Page.py` (14 files) — Each exports `render(user)` that returns a complete HTML string. No layout inheritance yet.
-- `static/js/` — 7 focused JS files (login, register, draft, detail, vote, draft-amendment, detail-amendment). All follow the same "collect form → POST → handle response" pattern.
+- `*Page.py` files — Each exports `render(user)` that returns a complete HTML string. No layout inheritance yet.
+- `static/js/` — focused JS files supporting login, register, voting, details, and the interactive draft flows (primarily in the rich Drafts hub).
 - `User.py` — Minimal validator on decoded Firebase token.
 
 ### Operator / Agent Power Tools (Secondary but Excellent)
 - `dev_tools/` — `cli.py` (primary agent interface), `dev_dashboard.py` (visual prefab), `spike.py`.
 - `admin/` — `admin_console.py` (god-view tables + action cards).
-
-### Data & Monitors (Secondary Heritage)
-- `az/`, `co/`, `ga/`, `il/`, `pa/`, `ri/` — State election result files (txt + countyResults.json).
-- `PresidentMonitor.py`, `ElectionMonitor.py`, `Plotter.py` — Scraping + matplotlib viz.
-- `chrome_install/` — Portable Chrome bundle for headless scraping.
 
 ### Firebase RTDB Structure (Current)
 ```
@@ -126,12 +124,13 @@ Firebase admin cert required at `$DATA_FOLDER/theinternetparty-...json`.
 
 We keep this list deliberately short. Historical status of completed items lives in dated handoffs under `handoffs/`.
 
-1. Enforce meta constraints at creation time (title ≤100 chars, description ≤10k) with live UI hints and counters.
-2. Add categories/tags to policies + filtering/sorting on the Congressional Library.
-3. Deepen the public experience (stronger empty states, registered-user visibility, clearer "how voting works" moments).
-4. Later true MetaPolicy enforcement (365-day sunset renewal votes, 3-week inactivity dismissal, stricter Sunday window gating, etc.).
-5. CSS consolidation (the largest remaining tech debt — every *Page.py still duplicates the base styles).
-6. Election monitor county graphs from the existing `countyResults.json` files (heritage feature).
+1. ~~Enforce meta constraints at creation time~~ **DONE 2026-07-02** (server-side ≤100/≤10k on all draft routes + existing UI counters; ballots gated to the current window).
+2. Connect the Render service (one-time manual step: Blueprint from `render.yaml` + upload the admin JSON Secret File), then run the targeted NPC scale test against the live URL.
+3. Add categories/tags to policies + filtering/sorting on the Congressional Library.
+4. Deepen the public experience (stronger empty states, registered-user visibility, clearer "how voting works" moments).
+5. Later true MetaPolicy enforcement (365-day sunset renewal votes, 3-week inactivity dismissal, majority-of-registered threshold — the NPC harness can now simulate the electorates these rules need, stricter Sunday gating).
+6. CSS consolidation (the largest remaining tech debt — every *Page.py still duplicates the base styles).
+7. 10k-scale path when needed: raise Render instance count (autoscaling on paid plans), cache/batch the per-request RTDB reads (VotePage does several per render), then consider sharding. Measure first with `run_full_cycle` at higher N against the deployed URL.
 
 The next natural wave is making the rules actually bite while keeping the proposal + voting experience delightful.
 
