@@ -595,28 +595,47 @@ pass  # constants already imported and available as Database.VOTE_YES etc. via t
 # ============================================================================
 _firebase_ready = False
 
+DATABASE_URL = 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
+SERVICE_ACCOUNT_FILENAME = "theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json"
+
+def get_service_account_path():
+    """Canonical path to the Firebase admin cert (same rule everywhere:
+    $DATA_FOLDER + fixed filename). Shared by the app, tools, and the harness."""
+    import os
+    data_folder = os.getenv("DATA_FOLDER", "/Users/pranav/data/")
+    if not data_folder.endswith("/"):
+        data_folder += "/"
+    return data_folder + SERVICE_ACCOUNT_FILENAME
+
 def ensure_firebase_initialized():
     """Idempotent initializer. Uses the same credential path as PlotterApp.py.
     Tools and CLI should call this early. Falls back silently for snapshot demos.
+    Recognizes an app initialized elsewhere (e.g. by another tool in-process).
     """
     global _firebase_ready
     if _firebase_ready:
         return True
     try:
+        import firebase_admin
         from firebase_admin import credentials, initialize_app
         import os
-        DATA_FOLDER = os.getenv("DATA_FOLDER", "/Users/pranav/data/")
-        SERVICE_ACCOUNT = DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json"
+        if firebase_admin._apps:
+            # Someone already initialized (main app, CLI, dashboard) — reuse it.
+            _firebase_ready = True
+            return True
+        SERVICE_ACCOUNT = get_service_account_path()
         if os.path.exists(SERVICE_ACCOUNT):
             cred = credentials.Certificate(SERVICE_ACCOUNT)
             initialize_app(cred, {
-                'databaseURL': 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
+                'databaseURL': DATABASE_URL
             })
             _firebase_ready = True
             return True
+        print(f"Firebase init skipped: service account not found at {SERVICE_ACCOUNT} "
+              f"(set DATA_FOLDER to the directory containing it)")
     except Exception as e:
         # Expected in pure-snapshot or re-init situations
-        pass
+        print("Firebase init warning:", e)
     return False
 
 

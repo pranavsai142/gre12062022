@@ -1,6 +1,7 @@
 from flask import Flask, render_template_string, url_for, redirect, session, request, jsonify
 import os
-from firebase_admin import auth, credentials, initialize_app, db
+import hashlib
+from firebase_admin import auth
 from datetime import datetime
 import uuid
 
@@ -13,15 +14,51 @@ from Ballot import Ballot
 from Vote import Vote, VOTE_YES, VOTE_NO, VOTE_ABSTAIN
 
 app = Flask(__name__)
-DATA_FOLDER = os.getenv("DATA_FOLDER", "/Users/pranav/data/")
 
-# Initialize Firebase Admin SDK (you need to set up your Firebase project first)
-cred = credentials.Certificate(DATA_FOLDER + "theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json")
+# Firebase Admin SDK via the one centralized initializer (same path all tools use).
+# Fail loudly at startup — a silently uninitialized app 500s on every request.
+if not Database.ensure_firebase_initialized():
+    raise RuntimeError(
+        f"Firebase service account not found at {Database.get_service_account_path()}. "
+        "Set DATA_FOLDER to the directory containing the admin JSON (see README)."
+    )
 
-initialize_app(cred, {
-    'databaseURL': 'https://theinternetparty-5b902-default-rtdb.firebaseio.com'
-})
-app.secret_key = os.urandom(12).hex()
+
+def _stable_secret_key():
+    """Session signing key that is identical across gunicorn workers and restarts.
+    os.urandom-per-process breaks sessions the moment --workers > 1 (each worker
+    rejects cookies signed by its siblings). Precedence:
+      1. SECRET_KEY env var (recommended on Render)
+      2. Deterministic digest of the private service-account file (stable, secret,
+         never in the repo)
+      3. Random (single-process dev fallback only)
+    """
+    env_key = os.environ.get("SECRET_KEY")
+    if env_key:
+        return env_key
+    try:
+        with open(Database.get_service_account_path(), "rb") as f:
+            return hashlib.sha256(f.read() + b"internet-party-session-v1").hexdigest()
+    except OSError:
+        return os.urandom(32).hex()
+
+
+app.secret_key = _stable_secret_key()
+
+
+@app.route('/healthz')
+def healthz():
+    """Lightweight health endpoint for Render health checks / uptime monitors.
+    Shallow by default (no RTDB roundtrip per ping); pass ?deep=1 to also
+    verify database connectivity."""
+    if request.args.get("deep"):
+        try:
+            from firebase_admin import db as _db
+            _db.reference("meta").get(shallow=True)
+        except Exception as e:
+            return jsonify({"status": "degraded", "database": str(e)}), 503
+        return jsonify({"status": "ok", "database": "ok"})
+    return jsonify({"status": "ok"})
 
 @app.route('/validate-token', methods=['POST'])
 def validate_token():
@@ -29,22 +66,45 @@ def validate_token():
     id_token = data.get('idToken')
     
     try:
-        # Verify the token and decode it
-        decoded_token = auth.verify_id_token(id_token)
-#         print(decoded_token, flush=True)
-        
+        # Verify the token and decode it. clock_skew_seconds tolerates freshly
+        # minted tokens from clients whose clock is a second or two off — without
+        # it, real logins intermittently fail with "Token used too early".
+        decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=10)
+
         # Start a session for the user
         session["user"] = decoded_token
-#         print("session[user]:", session["user"], flush=True)
         # Redirect to another page after successful validation
-        return redirect(url_for('account'))  # Replace 'dashboard' with your actual route name
-    except ValueError as e:
-        # Invalid token
+        return redirect(url_for('account'))
+    except Exception as e:
+        # Invalid/expired token. firebase-admin raises InvalidIdTokenError (a
+        # FirebaseError, NOT a ValueError) — catching only ValueError turned
+        # every bad token into a 500.
         return jsonify({"authenticated": False, "error": str(e)}), 401
+
+# MetaPolicy limits (SOUL_DRIVER: "Policy titles should be less than 100
+# characters. Policy descriptions should be less than 10,000 characters.")
+# The Drafts UI enforces these client-side (maxlength + counters); these are
+# the server-side teeth so the rule binds for ALL clients (API, NPCs, curl).
+TITLE_MAX_CHARS = 100
+DESCRIPTION_MAX_CHARS = 10000
+
+def _validateMetaLimits(title, description):
+    """Returns an error string if the MetaPolicy char limits are violated, else None."""
+    if not title or not str(title).strip():
+        return "Title is required."
+    if len(str(title)) > TITLE_MAX_CHARS:
+        return f"Title must be {TITLE_MAX_CHARS} characters or fewer (MetaPolicy). Yours is {len(str(title))}."
+    if description and len(str(description)) > DESCRIPTION_MAX_CHARS:
+        return f"Description must be {DESCRIPTION_MAX_CHARS:,} characters or fewer (MetaPolicy). Yours is {len(str(description)):,}."
+    return None
+
 
 @app.route("/create-draft", methods=["POST"])
 def create_draft():
     data = request.get_json()
+    limitError = _validateMetaLimits(data.get("title"), data.get("description"))
+    if limitError:
+        return jsonify({"success": False, "error": limitError}), 400
     policyData = {}
     policyData["title"] = data.get("title")
     policyData["description"] = data.get("description")
@@ -59,7 +119,7 @@ def create_draft():
         policyId = uuid.uuid4().hex
         policy = Policy(policyId, policyData)
         if(Database.createDraftPolicy(policy)):
-            return jsonify({"success": True})
+            return jsonify({"success": True, "id": policyId})
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
     else:
@@ -69,6 +129,9 @@ def create_draft():
 @app.route("/update-draft", methods=["POST"])
 def update_draft():
     data = request.get_json()
+    limitError = _validateMetaLimits(data.get("title"), data.get("description"))
+    if limitError:
+        return jsonify({"success": False, "error": limitError}), 400
     policyData = {}
     policyId = data.get("id")
     policyData["title"] = data.get("title")
@@ -121,6 +184,9 @@ def submit_draft():
 @app.route("/create-draft-amendment", methods=["POST"])
 def create_draft_amendment():
     data = request.get_json()
+    limitError = _validateMetaLimits(data.get("title"), data.get("description"))
+    if limitError:
+        return jsonify({"success": False, "error": limitError}), 400
     amendmentData = {}
     amendmentData["policyId"] = data.get("policyId")
     amendmentData["title"] = data.get("title")
@@ -136,7 +202,7 @@ def create_draft_amendment():
         amendmentId = uuid.uuid4().hex
         amendment = Amendment(amendmentId, amendmentData)
         if(Database.createDraftAmendment(amendment)):
-            return jsonify({"success": True})
+            return jsonify({"success": True, "id": amendmentId})
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
     else:
@@ -146,6 +212,9 @@ def create_draft_amendment():
 @app.route("/update-draft-amendment", methods=["POST"])
 def update_draft_amendment():
     data = request.get_json()
+    limitError = _validateMetaLimits(data.get("title"), data.get("description"))
+    if limitError:
+        return jsonify({"success": False, "error": limitError}), 400
     amendmentData = {}
     amendmentId = data.get("id")
     amendmentData["policyId"] = data.get("policyId")
@@ -197,6 +266,24 @@ def submit_draft_amendment():
         return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 500
 
 
+def _isOperator(sessionUserData):
+    """Operator gate for promote/seed/clear/set-window actions.
+    If OPERATOR_EMAILS is set (comma-separated), only those logged-in accounts
+    may perform operator actions. Unset = v1 behavior (any logged-in member),
+    so nothing changes until the env var is configured on Render.
+    """
+    if not User.validateUser(sessionUserData):
+        return False
+    allow = os.environ.get("OPERATOR_EMAILS", "").strip()
+    if not allow:
+        return True
+    emails = {e.strip().lower() for e in allow.split(",") if e.strip()}
+    return str(sessionUserData.get("email", "")).lower() in emails
+
+
+OPERATOR_DENIED = "This account is not authorized for operator actions."
+
+
 # ============================================================================
 # VOTING ENDPOINTS (ballot submission + window close/promote)
 # Follows the exact same JSON + session + "fish" error pattern as all other
@@ -206,7 +293,17 @@ def submit_draft_amendment():
 @app.route("/submit-ballot", methods=["POST"])
 def submit_ballot():
     data = request.get_json()
-    windowId = data.get("windowId") or Database.getCurrentVotingWindowId()
+    currentWindowId = Database.getCurrentVotingWindowId()
+    windowId = data.get("windowId") or currentWindowId
+    # Window gating (MetaPolicy integrity): ballots may only be cast into the
+    # effective current window (real ISO week or the operator override). Without
+    # this check, "one immutable vote per window" was bypassable by POSTing
+    # arbitrary past/future windowIds.
+    if windowId != currentWindowId:
+        return jsonify({
+            "success": False,
+            "error": f"Voting is only open for the current window ({currentWindowId}). Refresh the Vote page and try again."
+        }), 400
     choices = data.get("votes") or data.get("choices") or {}
     sessionUserData = session.get("user")
 
@@ -220,6 +317,20 @@ def submit_ballot():
         return jsonify({"success": False, "error": "You must be logged in to cast a ballot."}), 401
 
 
+@app.route("/ballot-items", methods=["GET"])
+def ballot_items():
+    """Public read-only JSON view of the current ballot (same data /vote renders).
+    Lets pure-HTTP clients (the NPC harness, future mobile/API consumers) discover
+    what is on the ballot without scraping HTML. Respects the window override."""
+    windowId = Database.getCurrentVotingWindowId()
+    policies, amendments = Database.getBallotItems()
+    items = (
+        [{"key": f"policy-{p.getId()}", "kind": "policy", "id": p.getId(), "title": p.getTitle()} for p in policies]
+        + [{"key": f"amendment-{a.getId()}", "kind": "amendment", "id": a.getId(), "title": a.getTitle()} for a in amendments]
+    )
+    return jsonify({"windowId": windowId, "items": items, "count": len(items)})
+
+
 @app.route("/close-window", methods=["POST"])
 def close_window():
     """Manual tabulate + promote for the current (or specified) window.
@@ -231,6 +342,8 @@ def close_window():
     sessionUserData = session.get("user")
 
     if(User.validateUser(sessionUserData)):
+        if not _isOperator(sessionUserData):
+            return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
         result = Database.promoteWinnersFromWindow(windowId)
         return jsonify({"success": True, "result": result})
     else:
@@ -271,6 +384,8 @@ def dev_tools_seed():
     sessionUserData = session.get("user")
     if not User.validateUser(sessionUserData):
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    if not _isOperator(sessionUserData):
+        return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
     data = request.get_json() or {}
     window = data.get("window") or Database.getCurrentVotingWindowId()
 
@@ -304,6 +419,8 @@ def dev_tools_clear():
     sessionUserData = session.get("user")
     if not User.validateUser(sessionUserData):
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    if not _isOperator(sessionUserData):
+        return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
     data = request.get_json() or {}
     window = data.get("window")
     if not window:
@@ -321,6 +438,8 @@ def dev_tools_promote():
     sessionUserData = session.get("user")
     if not User.validateUser(sessionUserData):
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    if not _isOperator(sessionUserData):
+        return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
     data = request.get_json() or {}
     window = data.get("window") or Database.getCurrentVotingWindowId()
     res = Database.promoteWinnersFromWindow(window)
@@ -333,6 +452,8 @@ def dev_tools_reset_user():
     sessionUserData = session.get("user")
     if not User.validateUser(sessionUserData):
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    if not _isOperator(sessionUserData):
+        return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
     data = request.get_json() or {}
     window = data.get("window")
     user_id = data.get("user_id") or data.get("uid")
@@ -351,6 +472,8 @@ def dev_tools_set_window():
     sessionUserData = session.get("user")
     if not User.validateUser(sessionUserData):
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
+    if not _isOperator(sessionUserData):
+        return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
     data = request.get_json() or {}
     window = data.get("window") or data.get("windowId")
     # empty / null / "clear" clears the override

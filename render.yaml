@@ -1,0 +1,36 @@
+# Render Blueprint for The Internet Party (Party No. 3)
+# https://render.com/docs/blueprint-spec
+#
+# Deploy: connect this repo in the Render dashboard (or "New > Blueprint").
+# Render builds on every git push to main and runs ./start.sh in the foreground.
+#
+# REQUIRED MANUAL STEP (one time): upload the Firebase admin service-account
+# JSON as a Secret File named exactly:
+#   theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
+# Render mounts secret files at /etc/secrets/, which DATA_FOLDER points at below.
+#
+# Scaling path (documented from the 2026-07 scale work):
+#   ~100 concurrent voters: this single instance (2 workers x 8 threads) is enough;
+#     validated with the NPC harness (see TESTING.md, scale tests).
+#   ~10k: raise numInstances (paid plans autoscale), keep RTDB chatter per request
+#     low (cache ballot reads), and consider upgrading the plan before sharding.
+
+services:
+  - type: web
+    name: internet-party
+    runtime: python
+    plan: starter
+    buildCommand: pip install pipenv && pipenv install --deploy
+    startCommand: ./start.sh
+    healthCheckPath: /healthz
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # stable per-service session key (all workers share it)
+      - key: DATA_FOLDER
+        value: /etc/secrets/         # where Render mounts Secret Files
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: GUNICORN_THREADS
+        value: "8"
+      - key: PYTHON_VERSION
+        value: "3.11"

@@ -1,7 +1,10 @@
 #!/bin/zsh
+# THE RECOMMENDED COMMAND FOR LOCAL DEVELOPMENT ON macOS.
+#
 # Local dev runner that keeps the public port on a Node process
 # (firewall-friendly) while gunicorn runs on localhost only.
 #
+# Always use this instead of ./start.sh for local work.
 # Only runs the PlotterApp (no PresidentMonitor / data generation).
 
 cd "$(dirname "$0")"
