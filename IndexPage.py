@@ -64,6 +64,17 @@ def render(user):
                 text-decoration: none;
                 color: #333;
             }
+            .menu-item:link,
+            .menu-item:visited {
+                color: #333; /* explicit non-purple from palette */
+            }
+            .menu-item:hover {
+                color: #ff6600;
+            }
+            .menu-item:active {
+                color: #cc5200;
+                font-weight: bold;
+            }
             .menu-item.active {
                 color: #ff6600;
                 font-weight: bold;
@@ -134,18 +145,37 @@ def render(user):
                 h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
                 .content { padding: 16px; }
                 .menu-bar {
-                    padding: 4px 2px;
+                    padding: 8px 0; /* revised vertical padding/alignment vs prior 4px 2px — grounds the bar, less raised */
                     flex-wrap: wrap;
+                    align-items: center;
                 }
                 .menu-item {
-                    margin: 3px 6px;
-                    padding: 10px 12px;
+                    margin: 2px 8px;
+                    padding: 8px 10px;
                     font-size: 0.95em;
                     min-height: 44px;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
                     border-radius: 4px;
+                    text-decoration: none;
+                    color: #333;
+                }
+                .menu-item:link,
+                .menu-item:visited {
+                    color: #333; /* non-purple, site palette */
+                }
+                .menu-item:hover {
+                    color: #ff6600;
+                    background: #fff7ed; /* vamp polish: subtle hover state using accent */
+                }
+                .menu-item:active {
+                    color: #cc5200;
+                    font-weight: bold;
+                }
+                .menu-item.active {
+                    color: #ff6600;
+                    font-weight: bold;
                 }
                 .hero { padding: 28px 16px; margin-bottom: 24px; }
                 .hero h1 { font-size: 2.1em; }
@@ -162,7 +192,7 @@ def render(user):
             <div class="menu-bar">
                 <a href="{{ url_for('policy') }}" class="menu-item">Policy</a>
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
-                <a href="{{ url_for('index') }}" class="menu-item.active">Home</a>
+                <a href="{{ url_for('index') }}" class="menu-item active">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item">{{ 'Account' if user else 'Login' }}</a>
             </div>

@@ -53,6 +53,17 @@ def render(user):
                 text-decoration: none;
                 color: #333;
             }
+            .menu-item:link,
+            .menu-item:visited {
+                color: #333;
+            }
+            .menu-item:hover {
+                color: #ff6600;
+            }
+            .menu-item:active {
+                color: #cc5200;
+                font-weight: bold;
+            }
             .menu-item.active {
                 color: #ff6600;
                 font-weight: bold;
@@ -151,10 +162,38 @@ def render(user):
                 body { font-size: 16px; }
                 h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
                 .content { padding: 16px; max-width: 100%; }
-                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-bar {
+                    padding: 8px 0; /* revised vs 4px 2px */
+                    flex-wrap: wrap;
+                    align-items: center;
+                }
                 .menu-item {
-                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
-                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                    margin: 2px 8px;
+                    padding: 8px 10px;
+                    font-size: 0.95em;
+                    min-height: 44px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    text-decoration: none;
+                    color: #333;
+                }
+                .menu-item:link,
+                .menu-item:visited {
+                    color: #333;
+                }
+                .menu-item:hover {
+                    color: #ff6600;
+                    background: #fff7ed;
+                }
+                .menu-item:active {
+                    color: #cc5200;
+                    font-weight: bold;
+                }
+                .menu-item.active {
+                    color: #ff6600;
+                    font-weight: bold;
                 }
                 .auth-card { padding: 18px; }
                 .auth-header { padding: 14px 16px; }
@@ -171,7 +210,7 @@ def render(user):
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
-                <a href="{{ url_for('account') }}" class="menu-item.active">{{ 'Account' if user else 'Login' }}</a>
+                <a href="{{ url_for('account') }}" class="menu-item active">{{ 'Account' if user else 'Login' }}</a>
             </div>
 
             <div class="content">

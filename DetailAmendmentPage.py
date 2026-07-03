@@ -165,6 +165,17 @@ def render(user, amendmentId):
                 text-decoration: none;
                 color: #333;
             }
+            .menu-item:link,
+            .menu-item:visited {
+                color: #333;
+            }
+            .menu-item:hover {
+                color: #ff6600;
+            }
+            .menu-item:active {
+                color: #cc5200;
+                font-weight: bold;
+            }
             .menu-item.active {
                 color: #ff6600;
                 font-weight: bold;
@@ -393,10 +404,38 @@ def render(user, amendmentId):
                 body { font-size: 16px; }
                 h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
                 .content { padding: 16px; }
-                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-bar {
+                    padding: 8px 0; /* revised vs 4px 2px */
+                    flex-wrap: wrap;
+                    align-items: center;
+                }
                 .menu-item {
-                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
-                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                    margin: 2px 8px;
+                    padding: 8px 10px;
+                    font-size: 0.95em;
+                    min-height: 44px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    text-decoration: none;
+                    color: #333;
+                }
+                .menu-item:link,
+                .menu-item:visited {
+                    color: #333;
+                }
+                .menu-item:hover {
+                    color: #ff6600;
+                    background: #fff7ed;
+                }
+                .menu-item:active {
+                    color: #cc5200;
+                    font-weight: bold;
+                }
+                .menu-item.active {
+                    color: #ff6600;
+                    font-weight: bold;
                 }
                 .detail-header, .detail-card { padding: 14px 16px; }
                 .detail-meta { font-size: 0.9em; gap: 8px; }
@@ -412,7 +451,7 @@ def render(user, amendmentId):
             <h1>The Internet Party</h1>
             <!-- Menu bar (standard duplicated, Policy active as parent section) -->
             <div class="menu-bar">
-                <a href="{{ url_for('policy') }}" class="menu-item.active">Policy</a>
+                <a href="{{ url_for('policy') }}" class="menu-item active">Policy</a>
                 <a href="{{ url_for('about') }}" class="menu-item">About</a>
                 <a href="{{ url_for('index') }}" class="menu-item">Home</a>
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
