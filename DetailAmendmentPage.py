@@ -35,7 +35,7 @@ def _generate_diff_html(original_title, original_desc, amended_title, amended_de
         return (
             '<div style="margin:12px 0 8px;">'
             '<div class="section-label">Diff vs Original Policy</div>'
-            '<div style="font-size:0.85em;color:#666;font-style:italic;padding:6px 8px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;">No textual changes to the policy title or description.</div>'
+            '<div class="diff-label" style="color:#666;font-style:italic;padding:6px 8px;background:#f9f9f9;border:1px solid #eee;border-radius:4px;">No textual changes to the policy title or description.</div>'
             '</div>'
         )
 
@@ -44,11 +44,11 @@ def _generate_diff_html(original_title, original_desc, amended_title, amended_de
     parts.append('<div class="section-label">Diff vs Original Policy</div>')
 
     # Shared scroll container for all change blocks (title + desc)
-    parts.append('<div style="font-family:monospace;font-size:0.82em;line-height:1.38;background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:8px 10px;max-height:280px;overflow:auto;">')
+    parts.append('<div class="diff-html" style="font-family:monospace;line-height:1.38;background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:8px 10px;max-height:280px;overflow:auto;">')
 
     # --- Title subsection (only when changed, single-line in practice) ---
     if title_changed:
-        parts.append('<div style="font-size:0.72em;color:#555;margin:2px 0 4px 2px;font-weight:600;">Title</div>')
+        parts.append('<div class="diff-label" style="color:#555;margin:2px 0 4px 2px;font-weight:600;">Title</div>')
         t_matcher = difflib.SequenceMatcher(None, orig_title_lines, new_title_lines)
         for tag, i1, i2, j1, j2 in t_matcher.get_opcodes():
             if tag == "equal":
@@ -73,7 +73,7 @@ def _generate_diff_html(original_title, original_desc, amended_title, amended_de
         if title_changed:
             # visual separator when both are present
             parts.append('<div style="height:1px;background:#eee;margin:6px 0;"></div>')
-            parts.append('<div style="font-size:0.72em;color:#555;margin:2px 0 4px 2px;font-weight:600;">Description</div>')
+            parts.append('<div class="diff-label" style="color:#555;margin:2px 0 4px 2px;font-weight:600;">Description</div>')
         d_matcher = difflib.SequenceMatcher(None, orig_desc_lines, new_desc_lines)
         has_desc_change = False
         for tag, i1, i2, j1, j2 in d_matcher.get_opcodes():
@@ -120,6 +120,7 @@ def render(user, amendmentId):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Amendment Detail</title>
         <style>
             body {
@@ -187,7 +188,7 @@ def render(user, amendmentId):
                 color: #222;
             }
             .detail-meta {
-                font-size: 0.82em;
+                font-size: 0.9em;
                 color: #666;
                 display: flex;
                 flex-wrap: wrap;
@@ -206,7 +207,7 @@ def render(user, amendmentId):
 
             .status-pill {
                 display: inline-block;
-                font-size: 0.75em;
+                font-size: 0.9em;
                 padding: 3px 10px;
                 border-radius: 999px;
                 font-weight: 600;
@@ -361,11 +362,21 @@ def render(user, amendmentId):
             .btn-back:hover { text-decoration: underline; }
 
             .section-label {
-                font-size: 0.8em;
+                font-size: 0.9em;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 color: #888;
                 margin: 0 0 6px;
+                font-weight: 600;
+            }
+            .diff-html {
+                font-family: monospace;
+                font-size: 0.9em;
+                line-height: 1.38;
+            }
+            .diff-label {
+                font-size: 0.9em;
+                color: #555;
                 font-weight: 600;
             }
 
@@ -375,6 +386,26 @@ def render(user, amendmentId):
                 background: #fff;
                 border: 1px dashed #ccc;
                 border-radius: 8px;
+            }
+
+            /* Mobile detail amendment: diffs stack, readable monospace, touch */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .detail-header, .detail-card { padding: 14px 16px; }
+                .detail-meta { font-size: 0.9em; gap: 8px; }
+                .section-label { font-size: 0.9em; }
+                .diff-html { font-size: 0.92em; }
+                .diff-label { font-size: 0.9em; }
+                .diff-html pre { font-size: 0.92em; padding: 8px; }
+                .btn { padding: 10px 14px; }
+                .not-found { padding: 24px 12px; }
             }
         </style>
         <body>
@@ -413,7 +444,7 @@ def render(user, amendmentId):
                         <div class="promotion-banner">
                             <strong>📝 Private Amendment Draft.</strong>
                             <a href="{{ url_for('drafts') }}">Edit this draft in the rich Drafts hub (recommended) →</a>
-                            <span style="color:#666;font-size:0.85em;">(legacy form below preserved for compatibility)</span>
+                            <span class="diff-label" style="color:#666;">(legacy form below preserved for compatibility)</span>
                         </div>
                     {% endif %}
 
@@ -424,9 +455,9 @@ def render(user, amendmentId):
                             <h4>Targets Policy</h4>
                             <div>
                                 <strong><a href="{{ url_for('detail', policyId=policy.getId()) }}" style="color:#222;text-decoration:none;">{{ policy.getTitle() }}</a></strong>
-                                <span style="font-size:0.8em;color:#888;"> (ID: <span id="policyId">{{ policy.getId() }}</span>)</span>
+                                <span style="font-size:0.9em;color:#888;"> (ID: <span id="policyId">{{ policy.getId() }}</span>)</span>
                             </div>
-                            <a href="{{ url_for('detail', policyId=policy.getId()) }}" style="font-size:0.85em;color:#ff6600;font-weight:600;">View full policy detail →</a>
+                            <a href="{{ url_for('detail', policyId=policy.getId()) }}" style="font-size:0.9em;color:#ff6600;font-weight:600;">View full policy detail →</a>
                         </div>
                         {% elif not policy %}
                             <p style="color:#c00;">Linked policy could not be loaded.</p>
@@ -448,7 +479,7 @@ def render(user, amendmentId):
                                     <button type="button" id="submitDraft" class="btn-secondary">Submit Amendment Draft to Canidate</button>
                                 </div>
                             </form>
-                            <p style="margin:12px 0 0;font-size:0.82em;color:#666;">
+                            <p style="margin:12px 0 0;font-size:0.9em;color:#666;">
                                 Prefer the <a href="{{ url_for('drafts') }}" style="color:#ff6600;font-weight:600;">Drafts hub</a> for rich editing and pre-filled amend flows.
                             </p>
                         {% elif amendment.amendmentType == "canidate" %}
@@ -465,9 +496,9 @@ def render(user, amendmentId):
                                 <h4>Targets Policy</h4>
                                 <div>
                                     <strong><a href="{{ url_for('detail', policyId=policy.getId()) }}" style="color:#222;text-decoration:none;">{{ policy.getTitle() }}</a></strong>
-                                    <span style="font-size:0.8em;color:#888;"> (ID: <span id="policyId">{{ policy.getId() }}</span>)</span>
+                                    <span style="font-size:0.9em;color:#888;"> (ID: <span id="policyId">{{ policy.getId() }}</span>)</span>
                                 </div>
-                                <a href="{{ url_for('detail', policyId=policy.getId()) }}" style="font-size:0.85em;color:#ff6600;font-weight:600;">View full policy detail →</a>
+                                <a href="{{ url_for('detail', policyId=policy.getId()) }}" style="font-size:0.9em;color:#ff6600;font-weight:600;">View full policy detail →</a>
                             </div>
                             {% endif %}
 
@@ -489,9 +520,9 @@ def render(user, amendmentId):
                                 <h4>Targets Policy</h4>
                                 <div>
                                     <strong><a href="{{ url_for('detail', policyId=policy.getId()) }}" style="color:#222;text-decoration:none;">{{ policy.getTitle() }}</a></strong>
-                                    <span style="font-size:0.8em;color:#888;"> (ID: <span id="policyId">{{ policy.getId() }}</span>)</span>
+                                    <span style="font-size:0.9em;color:#888;"> (ID: <span id="policyId">{{ policy.getId() }}</span>)</span>
                                 </div>
-                                <a href="{{ url_for('detail', policyId=policy.getId()) }}" style="font-size:0.85em;color:#ff6600;font-weight:600;">View full policy detail →</a>
+                                <a href="{{ url_for('detail', policyId=policy.getId()) }}" style="font-size:0.9em;color:#ff6600;font-weight:600;">View full policy detail →</a>
                             </div>
                             {% endif %}
 

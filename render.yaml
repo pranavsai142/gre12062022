@@ -1,26 +1,29 @@
 # Render Blueprint for The Internet Party (Party No. 3)
 # https://render.com/docs/blueprint-spec
 #
-# Deploy via Blueprint (recommended) or as a manual Web Service.
+# IMPORTANT: This file is ONLY used when you deploy via "New > Blueprint".
+# If you created the service as a regular "Web Service", render.yaml is ignored
+# and you must copy settings manually into the dashboard.
 #
-# For manual services, set in dashboard:
-#   Build Command: pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile
-#   Start Command: ./start.sh
+# To use this file properly:
+#   1. New → Blueprint → select this repo
+#   2. It will create/update the service using the values below.
 #
-# Python version: Set PYTHON_VERSION=3.13 as an environment variable in Render
-# (or rely on runtime.txt + the value below). runtime.txt declares python-3.13.
+# Manual fallback values (copy these if not using Blueprint):
+#   Build Command:   pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile
+#   Start Command:   ./start.sh
 #
-# Firebase: Upload the admin JSON as a Secret File with the exact name below.
-# It will be mounted at /etc/secrets/. Set DATA_FOLDER=/etc/secrets/
+# runtime.txt in the repo also helps Render pick Python 3.13.
 #
-# REQUIRED: theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
-# (mounted by Render at /etc/secrets/)
+# Firebase secret must still be attached manually in the dashboard as a Secret File.
 #
-# Scaling path (documented from the 2026-07 scale work):
-#   ~100 concurrent voters: this single instance (2 workers x 8 threads) is enough;
-#     validated with the NPC harness (see TESTING.md, scale tests).
-#   ~10k: raise numInstances (paid plans autoscale), keep RTDB chatter per request
-#     low (cache ballot reads), and consider upgrading the plan before sharding.
+# REQUIRED SECRET FILE (exact name):
+#   theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
+#   → mounted at /etc/secrets/
+#   → set DATA_FOLDER=/etc/secrets/
+#
+# Optional but recommended:
+#   OPERATOR_EMAILS=you@example.com,other@... (comma sep; restricts operator actions)
 
 services:
   - type: web
@@ -32,12 +35,16 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: SECRET_KEY
-        generateValue: true          # stable per-service session key (all workers share it)
+        generateValue: true
       - key: DATA_FOLDER
-        value: /etc/secrets/         # where Render mounts Secret Files
+        value: /etc/secrets/
       - key: WEB_CONCURRENCY
         value: "2"
       - key: GUNICORN_THREADS
         value: "8"
       - key: PYTHON_VERSION
         value: "3.13"
+
+# Scaling notes:
+# ~100 concurrent: fine on starter (2 workers x 8 threads)
+# ~10k: increase instances on paid plans + reduce per-request DB chatter

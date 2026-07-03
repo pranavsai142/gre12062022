@@ -60,6 +60,7 @@ def render(user):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Congressional Library</title>
         <style>
             body {
@@ -169,7 +170,7 @@ def render(user):
                 word-break: break-word;
             }
             .lib-card .meta {
-                font-size: 0.78em;
+                font-size: 0.9em;
                 color: #666;
                 margin-bottom: 8px;
             }
@@ -184,7 +185,7 @@ def render(user):
             }
             .status-pill {
                 display: inline-block;
-                font-size: 0.75em;
+                font-size: 0.9em;
                 padding: 2px 9px;
                 border-radius: 999px;
                 font-weight: 600;
@@ -206,6 +207,33 @@ def render(user):
                 background: #fff;
                 border: 1px dashed #ccc;
                 border-radius: 8px;
+            }
+
+            /* Mobile overrides for library cards + filters (desktop grid untouched) */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px;
+                    padding: 10px 12px;
+                    font-size: 0.95em;
+                    min-height: 44px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                }
+                .library-header { padding: 14px 16px; }
+                .card-grid { grid-template-columns: 1fr; gap: 12px; }
+                .search-box { max-width: 100%; padding: 10px 12px; }
+                .filters { gap: 6px; }
+                .filter-btn { padding: 8px 12px; font-size: 0.95em; }
+                .lib-card { padding: 14px; }
+                .empty { padding: 24px; }
+                .meta { font-size: 0.9em; }
+                .status-pill { font-size: 0.9em; }
             }
         </style>
         <body>
@@ -244,7 +272,7 @@ def render(user):
                     <button class="filter-btn" data-filter="amendment" onclick="setFilter('amendment', this)">Amendments only</button>
                 </div>
 
-                <div style="margin: 8px 0 12px; font-size:0.82em; color:#666;">
+                <div style="margin: 8px 0 12px; font-size:0.9em; color:#666;">
                     Sort: <a href="#" onclick="sortLibrary('date'); return false;" id="sort-date" style="color:#ff6600;font-weight:600;text-decoration:none;margin-right:8px;">Newest</a>
                     <a href="#" onclick="sortLibrary('title'); return false;" id="sort-title" style="color:#666;text-decoration:none;">A–Z</a>
                 </div>

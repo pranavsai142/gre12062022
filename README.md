@@ -24,52 +24,55 @@ This is the **only** command you should use for day-to-day work on this machine.
 
 ### Production (Render)
 
-The service uses **Pipenv** (Pipfile + Pipfile.lock). A `runtime.txt` is included for Python version.
+The repo includes a `render.yaml` **Blueprint** and `runtime.txt`.
 
-#### Connect in Render
-- New → **Blueprint** (recommended) or New → Web Service + connect repo.
-- Runtime: Python.
-- Name e.g. `internet-party`.
+**Critical: `render.yaml` is only used if you deploy via Blueprint.**
 
-**Build Command** (use this):
-```
-pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile
-```
+If you created the service as a normal "Web Service" (most common reason the file isn't picked up), Render ignores `render.yaml`. You have to set Build/Start/Env manually, and pushing changes to `render.yaml` does nothing for an existing manual service.
 
-**Start Command**:
-```
-./start.sh
-```
+#### How to actually use render.yaml
+1. In Render: **New → Blueprint**
+2. Select this repo
+3. It will read `render.yaml` and create the service with the correct settings.
 
-(Defined in `render.yaml` — Blueprint will apply them automatically.)
+For an existing service:
+- You can try linking it to the blueprint, or
+- Delete the service and recreate it via the Blueprint flow (re-attach the secret file after).
 
-Python version: You can set `PYTHON_VERSION=3.13` directly as an environment variable in the Render dashboard (this is what worked for the current deploy). `runtime.txt` + the value in render.yaml also declare 3.13.
+While using a manual Web Service (what many people end up with):
+- Manually set these in the service **Settings**:
+  - Build Command: `pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile`
+  - Start Command: `./start.sh`
+  - Add env vars as needed (see below)
 
-#### Secret File + Firebase
-- Upload the admin JSON as a **Secret File** with the *exact* name:
+`runtime.txt` is respected even on manual services and helps with Python version.
+
+#### Recommended env vars / settings
+- `DATA_FOLDER=/etc/secrets/`
+- `PYTHON_VERSION=3.13` (or use the dashboard Python version selector)
+- `OPERATOR_EMAILS=you@ex.com,friend@ex.com` (comma-separated; locks operator actions to these accounts. If unset, any logged-in user can use the /account operator panel.)
+- Other values from `render.yaml` (WEB_CONCURRENCY, GUNICORN_THREADS, etc.)
+
+#### Secret File (always manual)
+- In the service dashboard, add a **Secret File** with the **exact** name:
   ```
   theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
   ```
-- Mounted by Render at `/etc/secrets/`.
-- Set (or confirm) env var: `DATA_FOLDER=/etc/secrets/`
-
-#### Other env vars (from render.yaml or manual)
-- `SECRET_KEY` (auto-generated if using blueprint)
-- `WEB_CONCURRENCY=2`, `GUNICORN_THREADS=8`
-- (Optional) `OPERATOR_EMAILS=you@example.com,...`
+- This gets mounted at `/etc/secrets/`.
+- Must set `DATA_FOLDER=/etc/secrets/`
 
 #### Deploy & Verify
-- Deploy on push to `main` or manual.
-- Watch logs. `./start.sh` must run in foreground.
-- Health: `GET /healthz` and `/healthz?deep=1`
+- Push to `main` triggers auto-deploy.
+- `./start.sh` must run in the foreground (it does).
+- Check logs for the `DATA_FOLDER=...` line we added.
+- Health checks: `/healthz` and `/healthz?deep=1`
 
-The start command:
+The start command (what `./start.sh` runs):
 ```bash
-./start.sh
-# runs: pipenv run gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 8 --worker-class gthread PlotterApp:app
+pipenv run gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 8 --worker-class gthread PlotterApp:app
 ```
 
-After live, run the scale/E2E validation (see TESTING.md):
+After the service is live, validate with the NPC harness:
 ```bash
 RUN_SCALE=1 TARGET_BASE_URL=https://<your-app>.onrender.com \
   pipenv run pytest tests/e2e/test_scale_voting.py -q -s --browser chromium

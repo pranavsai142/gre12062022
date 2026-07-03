@@ -6,6 +6,7 @@ def render(user):
         user = None
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Sign In — The Internet Party</title>
         <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
@@ -139,10 +140,27 @@ def render(user):
                 font-size: 0.9em;
             }
             .form-hint {
-                font-size: 0.8em;
+                font-size: 0.9em;
                 color: #888;
                 margin-top: -8px;
                 margin-bottom: 12px;
+            }
+
+            /* Mobile auth cards + larger inputs/taps */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; max-width: 100%; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .auth-card { padding: 18px; }
+                .auth-header { padding: 14px 16px; }
+                input[type="email"], input[type="password"] { padding: 14px 12px; font-size: 1em; }
+                .btn-primary { padding: 14px 18px; }
+                .form-hint { font-size: 0.9em; }
             }
         </style>
         <body>

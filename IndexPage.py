@@ -21,6 +21,7 @@ def render(user):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Truth • Freedom • Health</title>
         <style>
             body {
@@ -125,6 +126,34 @@ def render(user):
                 border-left: 6px solid #ff6600;
                 padding: 14px 18px;
                 margin: 16px 0;
+            }
+
+            /* Mobile-first responsive overrides — desktop appearance unchanged */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; }
+                .menu-bar {
+                    padding: 4px 2px;
+                    flex-wrap: wrap;
+                }
+                .menu-item {
+                    margin: 3px 6px;
+                    padding: 10px 12px;
+                    font-size: 0.95em;
+                    min-height: 44px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                }
+                .hero { padding: 28px 16px; margin-bottom: 24px; }
+                .hero h1 { font-size: 2.1em; }
+                .hero .tagline { font-size: 1.15em; }
+                .cta-grid { grid-template-columns: 1fr; gap: 10px; }
+                .stats { gap: 12px; }
+                .stat-card { min-width: 46%; padding: 12px 14px; }
+                .stat-card .num { font-size: 1.6em; }
             }
         </style>
         <body>

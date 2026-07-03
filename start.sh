@@ -23,6 +23,11 @@
 
 export DATA_FOLDER=${DATA_FOLDER:-/data/}
 
+# Helpful visibility in Render logs (especially during first deploys)
+echo "DATA_FOLDER=$DATA_FOLDER"
+CERT_PATH="${DATA_FOLDER%/}/theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json"
+echo "Looking for Firebase cert at: $CERT_PATH"
+
 PORT=${PORT:-5000}
 WORKERS=${WEB_CONCURRENCY:-2}
 THREADS=${GUNICORN_THREADS:-8}

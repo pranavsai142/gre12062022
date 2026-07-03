@@ -91,6 +91,7 @@ def render(user, new=None, amend=None):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Drafts</title>
         <style>
             body {
@@ -164,7 +165,7 @@ def render(user, new=None, amend=None):
                 display: block;
                 color: #ff6600;
                 font-weight: 600;
-                font-size: 0.88em;
+                font-size: 0.9em;
                 margin: 0 0 6px 2px;
                 text-decoration: none;
             }
@@ -196,7 +197,7 @@ def render(user, new=None, amend=None):
                 box-shadow: 0 0 0 2px rgba(255,102,0,0.15);
             }
             .draft-item .meta {
-                font-size: 0.75em;
+                font-size: 0.9em;
                 color: #888;
                 margin-top: 4px;
             }
@@ -262,7 +263,7 @@ def render(user, new=None, amend=None):
                 font-style: italic;
             }
             .counter {
-                font-size: 0.8em;
+                font-size: 0.9em;
                 color: #666;
                 text-align: right;
                 margin-bottom: 12px;
@@ -326,7 +327,7 @@ def render(user, new=None, amend=None):
             }
             .diff-col h5 {
                 margin: 0 0 4px;
-                font-size: 0.8em;
+                font-size: 0.85em;
                 color: #555;
             }
             .diff-col pre, .diff-col textarea {
@@ -362,6 +363,33 @@ def render(user, new=None, amend=None):
                 border-radius: 6px;
                 text-decoration: none;
                 font-weight: 600;
+            }
+
+            /* Critical mobile: drafts layout stacks sidebar+editor, full width inputs, touch targets */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 14px; max-width: 100%; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .drafts-layout { flex-direction: column; gap: 16px; }
+                .sidebar { width: 100%; }
+                .draft-list { max-height: 260px; }
+                .editor-card { padding: 16px; }
+                .diff-box { flex-direction: column; gap: 10px; }
+                .diff-col pre, .diff-col textarea { max-height: 180px; }
+                .button-row { flex-direction: column; }
+                .button-row button { width: 100%; padding: 12px; }
+                .login-gate { margin: 20px auto; padding: 20px; }
+                input[type="text"], textarea { padding: 12px; font-size: 1em; }
+                .meta { font-size: 0.9em; }
+                .counter { font-size: 0.9em; }
+                h5 { font-size: 0.9em; }
+                .diff-col h5 { font-size: 0.95em; }
+                .new-draft-link { font-size: 0.9em; }
             }
         </style>
         <body>
@@ -414,7 +442,7 @@ def render(user, new=None, amend=None):
                             </div>
                             {% endfor %}
                         </div>
-                        <p style="margin-top:12px;font-size:0.85em;color:#666;">Click any draft above to load it into the editor. Changes are saved with the buttons below.</p>
+                        <p style="margin-top:12px;font-size:0.9em;color:#666;">Click any draft above to load it into the editor. Changes are saved with the buttons below.</p>
                     </div>
 
                     <!-- RIGHT EDITOR PANE -->

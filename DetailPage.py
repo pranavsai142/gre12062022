@@ -60,6 +60,7 @@ def render(user, policyId):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Policy Detail</title>
         <style>
             body {
@@ -127,7 +128,7 @@ def render(user, policyId):
                 color: #222;
             }
             .detail-meta {
-                font-size: 0.82em;
+                font-size: 0.9em;
                 color: #666;
                 display: flex;
                 flex-wrap: wrap;
@@ -146,7 +147,7 @@ def render(user, policyId):
 
             .status-pill {
                 display: inline-block;
-                font-size: 0.75em;
+                font-size: 0.9em;
                 padding: 3px 10px;
                 border-radius: 999px;
                 font-weight: 600;
@@ -287,7 +288,7 @@ def render(user, policyId):
             .btn-back:hover { text-decoration: underline; }
 
             .section-label {
-                font-size: 0.8em;
+                font-size: 0.9em;
                 text-transform: uppercase;
                 letter-spacing: 0.5px;
                 color: #888;
@@ -301,6 +302,25 @@ def render(user, policyId):
                 background: #fff;
                 border: 1px dashed #ccc;
                 border-radius: 8px;
+            }
+
+            /* Mobile detail: stack history, wrap text, larger taps, readable pre */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .detail-header, .detail-card { padding: 14px 16px; }
+                .detail-meta { font-size: 0.9em; gap: 8px; }
+                .section-label { font-size: 0.9em; }
+                .status-pill { font-size: 0.9em; }
+                pre, .amendment-history pre { font-size: 0.9em; padding: 10px; }
+                .btn { padding: 10px 14px; font-size: 0.95em; }
+                .not-found { padding: 24px 12px; }
             }
         </style>
         <body>
@@ -339,7 +359,7 @@ def render(user, policyId):
                         <div class="promotion-banner">
                             <strong>📝 Private Draft.</strong>
                             <a href="{{ url_for('drafts') }}">Edit this draft in the rich Drafts hub (recommended) →</a>
-                            <span style="color:#666;font-size:0.85em;">(legacy form below preserved for compatibility)</span>
+                            <span style="color:#666;font-size:0.9em;">(legacy form below preserved for compatibility)</span>
                         </div>
                     {% endif %}
 
@@ -360,7 +380,7 @@ def render(user, policyId):
                                     <button type="button" id="submitDraft" class="btn-secondary">Submit Draft to Canidate</button>
                                 </div>
                             </form>
-                            <p style="margin:12px 0 0;font-size:0.82em;color:#666;">
+                            <p style="margin:12px 0 0;font-size:0.9em;color:#666;">
                                 For the best experience (live char counters, two-pane view, diff for amendments) use the 
                                 <a href="{{ url_for('drafts') }}" style="color:#ff6600;font-weight:600;">Drafts hub</a>.
                             </p>
@@ -395,7 +415,7 @@ def render(user, policyId):
                                     <div style="font-weight:600;">
                                         <a href="{{ url_for('detail_amendment', amendmentId=a.getId()) }}" style="color:#111;text-decoration:none;">{{ a.getTitle() }}</a>
                                     </div>
-                                    <div style="font-size:0.82em;color:#666;margin-top:2px;">Candidate • Click to see the proposed change vs current policy</div>
+                                    <div style="font-size:0.9em;color:#666;margin-top:2px;">Candidate • Click to see the proposed change vs current policy</div>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -409,7 +429,7 @@ def render(user, policyId):
                                     <div style="font-weight:600;">
                                         <a href="{{ url_for('detail_amendment', amendmentId=a.getId()) }}" style="color:#111;text-decoration:none;">{{ a.getTitle() }}</a>
                                     </div>
-                                    <div style="font-size:0.82em;color:#666;margin-top:2px;">Official • Enacted change — view the diff on the amendment page</div>
+                                    <div style="font-size:0.9em;color:#666;margin-top:2px;">Official • Enacted change — view the diff on the amendment page</div>
                                 </div>
                                 {% endfor %}
                             </div>

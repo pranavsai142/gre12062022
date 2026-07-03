@@ -558,6 +558,13 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
+@app.errorhandler(404)
+def not_found_error(e):
+    """Real 404s now render the mobile-friendly NotFoundPage (with viewport, menu, responsive rules).
+    Previously the default Flask 404 had none of the party UI or mobile adaptations.
+    """
+    return NotFoundPage.render(session.get("user")), 404
+
 if __name__ == '__main__':
     # Respect env so we can disable reloader locally for more reliable firewall behavior
     # while keeping identical behavior in prod (where start.sh runs it).

@@ -51,6 +51,7 @@ def render(user):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Vote</title>
         <style>
             body {
@@ -116,7 +117,7 @@ def render(user):
                 font-size: 1.05em;
             }
             .ballot-item .meta {
-                font-size: 0.8em;
+                font-size: 0.9em;
                 color: #666;
                 margin-bottom: 8px;
             }
@@ -189,6 +190,27 @@ def render(user):
                 margin: 12px 0;
                 font-size: 0.9em;
             }
+
+            /* Mobile for ballot items, vote radios, sticky submit bar */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; max-width: 100%; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .ballot-item { padding: 12px 14px; }
+                .ballot-item pre { font-size: 0.95em; }
+                .vote-controls { gap: 10px; }
+                .vote-controls label { font-size: 1em; padding: 4px 2px; }
+                .submit-bar { padding: 12px; }
+                .submit-bar button { padding: 12px 20px; font-size: 1em; width: 100%; max-width: 320px; }
+                .section { margin-bottom: 24px; }
+                .empty-state { padding: 20px; }
+                .meta { font-size: 0.9em; }
+            }
         </style>
         <body>
             <h1>The Internet Party</h1>
@@ -238,7 +260,7 @@ def render(user):
                                 {% endif %}
 
                                 {% if item.key in tallies %}
-                                    <div style="font-size:0.8em; margin-top:6px; color:#555;">
+                                    <div style="font-size:0.9em; margin-top:6px; color:#555;">
                                         Current tally: Yes {{ tallies[item.key].yes }} • No {{ tallies[item.key].no }} • Abstain {{ tallies[item.key].abstain }}
                                     </div>
                                 {% endif %}
@@ -266,7 +288,7 @@ def render(user):
                                 {% endif %}
 
                                 {% if item.key in tallies %}
-                                    <div style="font-size:0.8em; margin-top:6px; color:#555;">
+                                    <div style="font-size:0.9em; margin-top:6px; color:#555;">
                                         Current tally: Yes {{ tallies[item.key].yes }} • No {{ tallies[item.key].no }} • Abstain {{ tallies[item.key].abstain }}
                                     </div>
                                 {% endif %}
@@ -280,7 +302,7 @@ def render(user):
                             <button id="submitBallot" style="background:#ff6600;color:white;border:none;padding:14px 28px;font-size:1.05em;cursor:pointer;border-radius:4px;">
                                 Cast My Ballot for Window {{ windowId }}
                             </button>
-                            <span style="margin-left:12px;font-size:0.85em;color:#666;">You can only vote once per window. Your choices are final for this week.</span>
+                            <span style="margin-left:12px;font-size:0.9em;color:#666;">You can only vote once per window. Your choices are final for this week.</span>
                         </div>
                     {% elif userAlreadyVoted %}
                         <div class="notice">
@@ -300,7 +322,7 @@ def render(user):
                     {% if user %}
                     <div style="margin-top:30px;text-align:center;">
                         <button id="closeWindowBtn" class="promote-btn">Close Window &amp; Promote Winners</button>
-                        <span style="font-size:0.75em;color:#999;display:block;margin-top:4px;">(Operator action — promotes items with more Yes than No votes)</span>
+                        <span style="font-size:0.9em;color:#666;display:block;margin-top:4px;">(Operator action — promotes items with more Yes than No votes)</span>
                     </div>
                     {% endif %}
 

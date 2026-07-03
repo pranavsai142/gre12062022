@@ -6,6 +6,7 @@ def render(user):
         user = None
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — About</title>
         <style>
             body {
@@ -57,6 +58,29 @@ def render(user):
             .about-section h2 { border-bottom: 3px solid #ff6600; padding-bottom: 6px; }
             .meta { background:#fff9e6; padding:16px; border-left:6px solid #cc9900; margin:16px 0; }
             ul { padding-left: 22px; }
+
+            /* Mobile responsive — sections stack, touch targets, no desktop change */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; max-width: 100%; }
+                .menu-bar {
+                    padding: 4px 2px;
+                    flex-wrap: wrap;
+                }
+                .menu-item {
+                    margin: 3px 6px;
+                    padding: 10px 12px;
+                    font-size: 0.95em;
+                    min-height: 44px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                }
+                .about-section { margin-bottom: 28px; }
+                .about-section h2 { font-size: 1.25em; }
+            }
         </style>
         <body>
             <h1>The Internet Party</h1>

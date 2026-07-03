@@ -39,6 +39,7 @@ def render(user):
 
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Your Account</title>
         <style>
             body {
@@ -107,7 +108,7 @@ def render(user):
             }
             .status {
                 display: inline-block;
-                font-size: .72em;
+                font-size: 0.9em;
                 padding: 1px 7px;
                 border-radius: 3px;
                 background: #f0f0f0;
@@ -164,7 +165,7 @@ def render(user):
             .op-stat strong { color: #222; }
             .tally-list {
                 font-family: monospace;
-                font-size: 0.82em;
+                font-size: 0.9em;
                 background: #f8f8f8;
                 padding: 8px 10px;
                 border-radius: 4px;
@@ -176,7 +177,7 @@ def render(user):
                 justify-content: space-between;
                 padding: 4px 0;
                 border-bottom: 1px dotted #eee;
-                font-size: 0.85em;
+                font-size: 0.9em;
             }
             .window-row:last-child { border-bottom: none; }
             .op-actions {
@@ -219,16 +220,40 @@ def render(user):
                 border: 1px solid #aac;
                 border-radius: 6px;
                 font-family: monospace;
-                font-size: 0.82em;
+                font-size: 0.9em;
                 white-space: pre-wrap;
                 max-height: 160px;
                 overflow: auto;
                 display: none;
             }
             .op-note {
-                font-size: 0.8em;
+                font-size: 0.9em;
                 color: #666;
                 margin-top: 8px;
+            }
+
+            /* Mobile for profile, item grids, operator tools panel */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .item-grid { grid-template-columns: 1fr; gap: 10px; }
+                .op-grid { grid-template-columns: 1fr; }
+                .op-actions { flex-direction: column; align-items: stretch; }
+                .op-actions input { width: 100%; }
+                .op-btn { padding: 10px 14px; width: 100%; }
+                .profile-card { padding: 14px 16px; }
+                .section { margin-bottom: 22px; }
+                #action-result { font-size: 0.9em; }
+                .status { font-size: 0.9em; }
+                .tally-list { font-size: 0.9em; }
+                .window-row { font-size: 0.9em; }
+                .op-note { font-size: 0.9em; }
             }
         </style>
         <body>
@@ -259,12 +284,12 @@ def render(user):
                     {% else %}
                         <a href="{{ url_for('vote') }}">Cast your vote now →</a>
                     {% endif %}
-                    <span style="font-size:0.8em;color:#888;display:block;margin-top:4px;">(Your own submissions appear in the sections below.)</span>
+                    <span style="font-size:0.9em;color:#888;display:block;margin-top:4px;">(Your own submissions appear in the sections below.)</span>
                 </div>
                 {% endif %}
 
                 <div class="section">
-                    <h3>My Drafts (Private) <a href="{{ url_for('drafts') }}" style="font-size:0.85em;font-weight:400;color:#ff6600;margin-left:12px;">Open full Drafts hub →</a></h3>
+                    <h3>My Drafts (Private) <a href="{{ url_for('drafts') }}" style="font-size:0.9em;font-weight:400;color:#ff6600;margin-left:12px;">Open full Drafts hub →</a></h3>
                     <div class="item-grid">
                         {% for d in drafts %}
                         <div class="item">
@@ -338,11 +363,11 @@ def render(user):
 
                         <!-- Current Window Snapshot -->
                         <div class="op-card" style="background:#fafafa;border:1px solid #eee;padding:12px 14px;margin-bottom:12px;">
-                            <h4 style="margin-bottom:8px;">Current Window (effective): <span style="font-family:monospace;">{{ window }}</span> <span style="font-size:0.8em;color:#888;">({{ op_participation }} participants)</span></h4>
+                            <h4 style="margin-bottom:8px;">Current Window (effective): <span style="font-family:monospace;">{{ window }}</span> <span style="font-size:0.9em;color:#888;">({{ op_participation }} participants)</span></h4>
                             <div class="op-grid">
                                 <div class="op-stat">
                                     <strong>Ballot items:</strong> {{ op_ballot_pols|length + op_ballot_amends|length }}<br>
-                                    <span style="font-size:0.8em;">{{ op_ballot_pols|length }} policies + {{ op_ballot_amends|length }} amendments</span>
+                                    <span style="font-size:0.9em;">{{ op_ballot_pols|length }} policies + {{ op_ballot_amends|length }} amendments</span>
                                 </div>
                                 <div class="op-stat">
                                     <strong>Live tallies (top):</strong>
@@ -381,10 +406,10 @@ def render(user):
                             <h4 style="margin-bottom:8px;color:#c60;">Live Operator Actions — Full Test Control</h4>
 
                             <div style="margin-bottom:8px;">
-                                <label style="font-size:0.85em;">Target Window (edit + Set or hit Enter to override what the whole site sees as "current"):</label><br>
-                                <input type="text" id="targetWindow" value="{{ window }}" style="width:220px; font-family:monospace; padding:4px;" onkeydown="if (event.key === 'Enter') { setCurrentWindowFromInput(); }">
-                                <button onclick="setCurrentWindowFromInput()" class="op-btn" style="padding:3px 10px; font-size:0.8em; background:#555; color:white; border:none; border-radius:3px; cursor:pointer;">Set</button>
-                                <button onclick="clearCurrentWindowOverride()" class="op-btn" style="padding:3px 10px; font-size:0.8em; background:#888; color:white; border:none; border-radius:3px; cursor:pointer;">Clear override</button>
+                                <label style="font-size:0.9em;">Target Window (edit + Set or hit Enter to override what the whole site sees as "current"):</label><br>
+                                <input type="text" id="targetWindow" value="{{ window }}" style="width:100%; font-family:monospace; padding:6px;" onkeydown="if (event.key === 'Enter') { setCurrentWindowFromInput(); }">
+                                <button onclick="setCurrentWindowFromInput()" class="op-btn" style="padding:10px 14px; background:#555; color:white; border:none; border-radius:4px; cursor:pointer;">Set</button>
+                                <button onclick="clearCurrentWindowOverride()" class="op-btn" style="padding:10px 14px; background:#888; color:white; border:none; border-radius:4px; cursor:pointer;">Clear override</button>
                             </div>
 
                             <div class="op-actions" style="flex-wrap:wrap; gap:8px;">

@@ -6,6 +6,7 @@ def render(user):
         user = None
     return render_template_string('''
         <!doctype html>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Page Not Found</title>
         <style>
             body {
@@ -47,8 +48,28 @@ def render(user):
                 color: #333;
             }
             .menu-item.active {
-                color: #ff6600;  /* Change this color to your preference */
+                color: #ff6600;
                 font-weight: bold;
+            }
+            .content {
+                flex: 1;
+                padding: 20px;
+                max-width: 720px;
+                margin: 0 auto;
+            }
+            .notfound { text-align: center; padding: 40px 20px; }
+
+            /* Mobile notfound + consistent menu */
+            @media (max-width: 768px) {
+                body { font-size: 16px; }
+                h1 { font-size: 1.5em; margin: 8px 0 2px 12px; }
+                .content { padding: 16px; }
+                .menu-bar { padding: 4px 2px; flex-wrap: wrap; }
+                .menu-item {
+                    margin: 3px 6px; padding: 10px 12px; font-size: 0.95em;
+                    min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 4px;
+                }
+                .notfound { padding: 24px 12px; }
             }
         </style>
         <body>
@@ -61,7 +82,13 @@ def render(user):
                 <a href="{{ url_for('vote') }}" class="menu-item">Vote</a>
                 <a href="{{ url_for('account') }}" class="menu-item">{{ 'Account' if user else 'Login' }}</a>
             </div>
-            <h2>Page Not Found</h2>
+            <div class="content">
+                <div class="notfound">
+                    <h2>Page Not Found</h2>
+                    <p>The page you are looking for does not exist or has moved.</p>
+                    <p><a href="{{ url_for('index') }}" style="color:#ff6600;font-weight:600;">Return to Home →</a></p>
+                </div>
+            </div>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
