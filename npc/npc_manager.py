@@ -12,6 +12,7 @@ Do not use on production data without extreme caution (delete is destructive on 
 """
 
 import uuid
+import concurrent.futures
 from typing import List, Dict, Any, Optional
 
 import Database
@@ -27,27 +28,41 @@ class NPCManager:
         self.base_url = base_url
         Database.ensure_firebase_initialized()
 
-    def provision_batch(self, count: int = 5, prefix: str = "npc-scale-") -> List[NPCClient]:
-        clients: List[NPCClient] = []
-        for i in range(count):
+    def provision_batch(self, count: int = 5, prefix: str = "npc-scale-", concurrency: int = 10) -> List[NPCClient]:
+        """Create + sign in `count` real NPC users. Concurrent because at fleet
+        sizes (100+) serial Firebase signups dominate scenario wall time."""
+        def _provision(i: int) -> NPCClient:
             email = f"{prefix}{uuid.uuid4().hex[:8]}@e2e-test.theinternetparty.local"
             name = f"NPC {prefix}{i}"
             client = NPCClient(base_url=self.base_url, email=email, name=name)
-            uid = client.ensure_user()
+            client.ensure_user()
             client.signin_and_establish_session()
-            clients.append(client)
-        return clients
+            return client
+
+        if count <= 1 or concurrency <= 1:
+            return [_provision(i) for i in range(count)]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as ex:
+            return list(ex.map(_provision, range(count)))
 
     def delete_all_test(self, prefix: str = "npc-scale-") -> int:
-        """Delete Auth users whose email starts with the prefix. Returns count deleted."""
+        """Delete Auth users whose email starts with the prefix. Returns count deleted.
+        Uses the batch delete API (up to 1000 uids per call) — the one-by-one loop
+        was unusable after 100-NPC scale runs."""
+        uids = [u.uid for u in admin_auth.list_users().iterate_all()
+                if u.email and u.email.startswith(prefix)]
         deleted = 0
-        for user in admin_auth.list_users().iterate_all():
-            if user.email and user.email.startswith(prefix):
-                try:
-                    admin_auth.delete_user(user.uid)
-                    deleted += 1
-                except Exception:
-                    pass
+        for i in range(0, len(uids), 1000):
+            batch = uids[i:i + 1000]
+            try:
+                result = admin_auth.delete_users(batch)
+                deleted += len(batch) - result.failure_count
+            except Exception:
+                for uid in batch:
+                    try:
+                        admin_auth.delete_user(uid)
+                        deleted += 1
+                    except Exception:
+                        pass
         return deleted
 
     def list_active(self, prefix: str = "npc-scale-") -> List[Dict[str, Any]]:

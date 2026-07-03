@@ -17,7 +17,7 @@ from playwright.sync_api import Page, expect
 try:
     import sys
     from pathlib import Path
-    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import Database
 except Exception:
     Database = None  # graceful if not in path during some runs
@@ -74,12 +74,15 @@ def live_server():
     # Teardown could kill the thread but for session scope we leave it (process end will clean)
 
 
-@pytest.fixture
-def base_url(live_server, request):
-    """Base URL for the app under test. Respects --base-url if provided."""
-    # pytest-playwright and our fixture cooperate.
-    # Allow CLI override: pytest ... --base-url http://...
-    return request.config.getoption("--base-url") or live_server
+@pytest.fixture(scope="session")
+def base_url(request):
+    """Base URL for the app under test. Respects --base-url if provided.
+    Session-scoped because pytest-base-url's session fixtures consume it.
+    Only starts the in-process live server when no --base-url is given."""
+    override = request.config.getoption("--base-url")
+    if override:
+        return override
+    return request.getfixturevalue("live_server")
 
 
 @pytest.fixture
@@ -91,17 +94,17 @@ def page(page: Page, base_url):
 
 
 # Helper to force the entire app (Vote page etc.) to a specific window
-def set_current_window_override(window_id: str, base_url: str = "http://127.0.0.1:5000"):
-    """Use the operator endpoint or direct DB write to override current window for tests."""
-    # Prefer the real operator path when possible, fall back to direct DB.
-    # This makes /vote + Library instantly see the test data.
+def set_current_window_override(window_id, base_url: str = "http://127.0.0.1:5000"):
+    """Direct DB write of meta/currentWindowOverride (fast test control path).
+    Pass None to clear. This makes /vote + Library instantly see the test data."""
     try:
-        import requests
-        # The account operator panel hits /dev-tools/set-window-override or similar.
-        # For tests we often just write it directly via Database for speed.
         if Database:
             Database.ensure_firebase_initialized()
-            Database.db.reference("meta/currentWindowOverride").set(window_id)
+            ref = Database.db.reference("meta/currentWindowOverride")
+            if window_id:
+                ref.set(window_id)
+            else:
+                ref.delete()
             return True
     except Exception:
         pass
@@ -110,14 +113,43 @@ def set_current_window_override(window_id: str, base_url: str = "http://127.0.0.
 
 @pytest.fixture
 def test_window_id():
-    """A unique throwaway window id for the test."""
+    """A unique throwaway window id for the test. Clears the window data AND the
+    site-wide override on teardown so tests never leave the live site pointed at
+    a dead test window."""
     import uuid
     wid = f"{TEST_WINDOW_PREFIX}-{uuid.uuid4().hex[:8]}"
     yield wid
-    # Best-effort cleanup
     try:
         if Database:
-            # Clear the window data
-            Database.clear_window_votes(wid)  # if the helper exists / or direct
+            Database.ensure_firebase_initialized()
+            Database.clear_window_votes(wid, confirm=True)
+            current = Database.db.reference("meta/currentWindowOverride").get()
+            if current == wid:
+                Database.db.reference("meta/currentWindowOverride").delete()
+    except Exception:
+        pass
+
+
+def make_npc(base_url: str, prefix: str = TEST_NPC_PREFIX):
+    """One real authenticated NPC (Firebase user + Flask session) for test setup.
+    The NPC harness is the blessed way to arrange multi-user state in E2E tests.
+    All NPCs with the E2E prefix are deleted at session end (see fixture below)."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from npc.npc_manager import NPCManager
+    return NPCManager(base_url=base_url).provision_batch(1, prefix=prefix)[0]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_e2e_npcs():
+    """Delete the Firebase Auth users this suite created (prefix-based), so
+    repeated runs don't accumulate synthetic accounts."""
+    yield
+    try:
+        from npc.npc_manager import NPCManager
+        deleted = NPCManager().delete_all_test(prefix=TEST_NPC_PREFIX)
+        if deleted:
+            print(f"\n[conftest] Deleted {deleted} {TEST_NPC_PREFIX}* NPC auth users")
     except Exception:
         pass

@@ -9,14 +9,17 @@ Run:
     pipenv run python npc/server.py
 
 Opens a simple control panel at http://localhost:5555 (orange card aesthetic to match the site).
+Target app defaults to http://localhost:5000 — override with TARGET_BASE_URL
+(e.g. a deployed Render URL; window-prefix safety guards still apply).
 """
 
 import os
-import concurrent.futures
-from flask import Flask, request, jsonify, render_string
+import json
+import time
+from flask import Flask, request, render_template_string
 
 from .npc_manager import NPCManager
-from .npc_client import NPCClient
+from .scenarios import run_full_cycle, cleanup_scenario
 
 app = Flask(__name__)
 mgr = NPCManager(base_url=os.environ.get("TARGET_BASE_URL", "http://localhost:5000"))
@@ -35,7 +38,7 @@ DASHBOARD_HTML = """
     input, select { padding:6px; background:#222; color:#ddd; border:1px solid #444; }
     table { width:100%; border-collapse: collapse; }
     th, td { padding:6px 8px; border-bottom:1px solid #333; text-align:left; }
-    .metrics { font-family: monospace; background:#222; padding:8px; white-space:pre; }
+    .metrics { font-family: monospace; background:#222; padding:8px; white-space:pre-wrap; word-wrap:break-word; }
   </style>
 </head>
 <body>
@@ -54,23 +57,28 @@ DASHBOARD_HTML = """
   </div>
 
   <div class="card">
-    <h2>Active NPCs</h2>
+    <h2>Active NPCs ({{ npcs|length }})</h2>
     <table>
       <tr><th>Email</th><th>UID</th></tr>
-      {% for n in npcs %}
+      {% for n in npcs[:25] %}
       <tr><td>{{ n.email }}</td><td>{{ n.uid }}</td></tr>
       {% endfor %}
     </table>
+    {% if npcs|length > 25 %}<p><em>…and {{ npcs|length - 25 }} more.</em></p>{% endif %}
     {% if not npcs %}<p><em>No NPCs right now.</em></p>{% endif %}
   </div>
 
   <div class="card">
-    <h2>Scale Scenario</h2>
+    <h2>Full Governance Cycle at Scale</h2>
+    <p>Drafters propose real policies → voters cast real immutable ballots concurrently →
+       integrity checks → operator promote → metrics. Runs on an isolated SCALE- window.</p>
     <form action="/scenarios/full-cycle" method="post">
       <label>Window ID: <input name="window_id" value="SCALE-TEST-{{ ts }}"></label><br><br>
       Drafters: <input name="drafters" type="number" value="3" style="width:60px">
       Voters: <input name="voters" type="number" value="12" style="width:60px">
-      <button type="submit">Run Full Cycle (propose → vote → promote)</button>
+      Concurrency: <input name="concurrency" type="number" value="20" style="width:60px">
+      <label style="margin-left:8px"><input type="checkbox" name="cleanup" value="1" checked> cleanup after</label>
+      <button type="submit">Run Full Cycle</button>
     </form>
     <p class="metrics">{{ last_result or '' }}</p>
   </div>
@@ -82,9 +90,9 @@ DASHBOARD_HTML = """
 
 @app.route("/")
 def index():
-    import time
     npcs = mgr.list_active()
-    return render_string(DASHBOARD_HTML, target=mgr.base_url, npcs=npcs, ts=int(time.time()), last_result=request.args.get("result"))
+    return render_template_string(DASHBOARD_HTML, target=mgr.base_url, npcs=npcs,
+                                  ts=int(time.time()), last_result=request.args.get("result"))
 
 @app.route("/npcs/create", methods=["POST"])
 def create_npcs():
@@ -99,33 +107,17 @@ def delete_npcs():
 
 @app.route("/scenarios/full-cycle", methods=["POST"])
 def full_cycle():
-    import time
-    window = request.form.get("window_id", "SCALE-TEST")
-    n_drafters = int(request.form.get("drafters", 3))
-    n_voters = int(request.form.get("voters", 12))
-
-    # 1. Point the whole live site at this window (best done via operator or direct DB)
-    # Here we just note it — the caller should also set the override on /account.
-
-    drafters = mgr.provision_batch(n_drafters)
-    for c in drafters:
-        try:
-            c.create_draft(f"Scale Policy {time.time()}", "Created by NPC scale harness for testing.")
-            c.submit_draft("last")  # placeholder — real impl tracks ids
-        except Exception as e:
-            print("drafter error", e)
-
-    voters = mgr.provision_batch(n_voters)
-    for c in voters:
-        try:
-            # In a full version we would fetch ballot items for the window and build a proper votes map.
-            c.submit_ballot(window, {})  # placeholder
-        except Exception as e:
-            print("voter error", e)
-
-    # Placeholder promote step (normally operator clicks the button or hits the endpoint)
-    result = f"Ran with {len(drafters)} drafters + {len(voters)} voters on {window}. Check /vote and operator promote."
-    return f"{result} <a href='/'>Back</a>"
+    window = request.form.get("window_id") or f"SCALE-TEST-{int(time.time())}"
+    metrics = run_full_cycle(
+        base_url=mgr.base_url,
+        window_id=window,
+        n_drafters=int(request.form.get("drafters", 3)),
+        n_voters=int(request.form.get("voters", 12)),
+        concurrency=int(request.form.get("concurrency", 20)),
+        cleanup=bool(request.form.get("cleanup")),
+    )
+    pretty = json.dumps(metrics, indent=2)
+    return f"<pre style='font-family:monospace'>{pretty}</pre> <a href='/'>Back</a>"
 
 if __name__ == "__main__":
     port = int(os.environ.get("NPC_PORT", 5555))

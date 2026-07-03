@@ -3,17 +3,19 @@ NPCClient — drives NPC actions using the *exact* existing HTTP API that the br
 
 - Auth: Firebase REST sign-up / sign-in + /validate-token (exact browser API)
 - Mutations use identical POSTs to /create-draft etc as static/js and PlotterApp
-- TARGET_BASE_URL configurable. Pure client, no direct DB mutations.
+  (payload keys mirror DraftsPage.py / vote.js exactly: "id", "policyId", "votes")
+- Ballot discovery uses the public read-only /ballot-items JSON route
+- TARGET_BASE_URL configurable. Pure HTTP client, no direct DB mutations.
 """
 
 import requests
-import time
 import uuid
 from typing import Dict, Any, Optional
 
 class NPCClient:
     """Lightweight client that behaves like a browser tab for one NPC user."""
 
+    # Same public web API key the browser uses (static/js/login.js)
     FIREBASE_API_KEY = "AIzaSyAQ5Sty_qAzOBtd_h2gFTGEC5sHH3_fNWE"
     SIGNUP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={key}"
     SIGNIN_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={key}"
@@ -59,62 +61,95 @@ class NPCClient:
             "email": self.email,
             "password": self.password,
             "returnSecureToken": True
-        })
+        }, timeout=30)
         r.raise_for_status()
         id_token = r.json()["idToken"]
 
-        # 2. Exchange at our app (exactly like the frontend does)
-        resp = self.session.post(f"{self.base_url}/validate-token", json={"idToken": id_token})
-        # The app sets a Flask session cookie on success
-        if resp.status_code >= 400:
-            raise RuntimeError(f"validate-token failed: {resp.status_code} {resp.text}")
+        # 2. Exchange at our app (exactly like the frontend does).
+        # One retry after a short pause: a just-issued token can trip clock-skew
+        # rejection on the server during high-concurrency provisioning.
+        import time as _time
+        for attempt in range(2):
+            resp = self.session.post(f"{self.base_url}/validate-token", json={"idToken": id_token}, timeout=30)
+            if resp.status_code < 400:
+                return
+            if attempt == 0:
+                _time.sleep(1.5)
+        raise RuntimeError(f"validate-token failed: {resp.status_code} {resp.text[:300]}")
 
     def _post(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
-        r = self.session.post(url, json=payload)
-        if not r.ok:
-            raise RuntimeError(f"POST {path} failed: {r.status_code} {r.text}")
+        r = self.session.post(url, json=payload, timeout=60)
         try:
-            return r.json()
+            body = r.json()
         except Exception:
-            return {"raw": r.text}
+            body = {"raw": r.text}
+        if not r.ok:
+            raise RuntimeError(f"POST {path} failed: {r.status_code} {body.get('error', body)}")
+        return body
 
-    # High-level actions mirroring the JS clients
-    def create_draft(self, title: str, description: str, category: str = "") -> Dict[str, Any]:
-        return self._post("/create-draft", {"title": title, "description": description, "category": category})
+    # ------------------------------------------------------------------
+    # High-level actions mirroring the JS clients (DraftsPage.py saveDraft /
+    # submitToCanidate and static/js/vote.js — identical payload keys).
+    # ------------------------------------------------------------------
+
+    def create_draft(self, title: str, description: str) -> Dict[str, Any]:
+        """Returns {"success": True, "id": "<new draft policy id>"}."""
+        return self._post("/create-draft", {"title": title, "description": description})
 
     def submit_draft(self, draft_id: str) -> Dict[str, Any]:
-        return self._post("/submit-draft", {"draft_id": draft_id})
+        return self._post("/submit-draft", {"id": draft_id})
 
     def create_amendment(self, policy_id: str, title: str, description: str) -> Dict[str, Any]:
+        """Returns {"success": True, "id": "<new draft amendment id>"}."""
         return self._post("/create-draft-amendment", {
-            "target_policy_id": policy_id,
+            "policyId": policy_id,
             "title": title,
             "description": description
         })
 
     def submit_amendment(self, amendment_id: str) -> Dict[str, Any]:
-        return self._post("/submit-draft-amendment", {"draft_amendment_id": amendment_id})
+        return self._post("/submit-draft-amendment", {"id": amendment_id})
 
-    def get_current_ballot(self, window_id: Optional[str] = None) -> Dict[str, Any]:
-        # For simplicity, the /vote page or a JSON endpoint. NPC can also read via requests.
-        # Many tests drive this via the page or use Database directly for assertions.
-        params = {"window": window_id} if window_id else {}
-        r = self.session.get(f"{self.base_url}/vote", params=params)
-        return {"status": r.status_code}
+    def draft_and_submit_policy(self, title: str, description: str) -> str:
+        """Full drafter flow: create private draft, then elevate to canidate.
+        Returns the policy id."""
+        created = self.create_draft(title, description)
+        policy_id = created.get("id")
+        if not policy_id:
+            raise RuntimeError(f"create-draft did not return an id: {created}")
+        self.submit_draft(policy_id)
+        return policy_id
+
+    def get_ballot_items(self) -> Dict[str, Any]:
+        """Public JSON view of the live ballot: {"windowId":..., "items":[{key,kind,id,title}]}."""
+        r = self.session.get(f"{self.base_url}/ballot-items", timeout=30)
+        r.raise_for_status()
+        return r.json()
 
     def submit_ballot(self, window_id: str, votes: Dict[str, str]) -> Dict[str, Any]:
         """votes: {"policy-xxx": "yes" | "no" | "abstain", ...}"""
         return self._post("/submit-ballot", {"windowId": window_id, "votes": votes})
 
     def vote_all(self, choice: str, window_id: Optional[str] = None) -> Dict[str, Any]:
-        """Convenience: vote the same choice on everything currently on the ballot."""
-        # In real usage the caller usually knows the items or fetches via /vote or Database.
-        # Here we provide a placeholder that the scale runner will fill properly.
-        if not window_id:
-            window_id = "CURRENT"  # the server will have set override
-        # A production implementation would call get_ballot_items and build the map.
-        return {"note": "Implement ballot item fetch + map in full version", "choice": choice}
+        """Vote the same choice on everything currently on the ballot.
+        Fetches the live ballot via /ballot-items (respects the window override),
+        builds the full choices map, and casts one immutable ballot."""
+        ballot = self.get_ballot_items()
+        window_id = window_id or ballot["windowId"]
+        votes = {item["key"]: choice for item in ballot["items"]}
+        if not votes:
+            return {"success": False, "error": "No items on the ballot to vote on."}
+        return self.submit_ballot(window_id, votes)
+
+    def close_window(self, window_id: Optional[str] = None) -> Dict[str, Any]:
+        """Operator action: tabulate + promote winners (same endpoint the Vote page button hits)."""
+        return self._post("/close-window", {"windowId": window_id} if window_id else {})
+
+    def set_window_override(self, window_id: Optional[str]) -> Dict[str, Any]:
+        """Operator action: point the whole live site at a window (or clear with None).
+        Same endpoint the /account Target Window box uses."""
+        return self._post("/dev-tools/set-window", {"window": window_id or ""})
 
     def __repr__(self):
         return f"<NPCClient {self.email} uid={self.uid}>"

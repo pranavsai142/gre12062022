@@ -22,8 +22,8 @@ def test_home_loads_and_navigates_to_vote_and_policy(page: Page, base_url: str):
 
     # Basic nav check: menu items / links are present
     # (menu uses url_for so links contain the paths)
-    expect(page.locator('a[href*="/vote"]')).to_be_visible()
-    expect(page.locator('a[href*="/policy"]')).to_be_visible()
+    expect(page.locator('a[href*="/vote"]').first).to_be_visible()
+    expect(page.locator('a[href*="/policy"]').first).to_be_visible()
 
     # Quick navigation to /vote
     page.goto(f"{base_url}/vote")

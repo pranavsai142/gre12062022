@@ -1,0 +1,61 @@
+# CI for The Internet Party
+#
+# Two layers:
+#   1. compile  — no secrets needed; catches syntax errors / broken imports fast.
+#   2. e2e      — full Playwright + NPC-backed suite against a real in-CI app.
+#      Requires the repo secret FIREBASE_SERVICE_ACCOUNT (the admin JSON contents).
+#      Until that secret is added, the job is skipped automatically.
+#
+# NOTE: the E2E suite talks to the real Firebase project (RTDB + Auth) using
+# isolated E2E-TEST-* windows and prefix-cleaned NPC users, exactly like local runs.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Syntax-check every Python source
+        run: python -m compileall -q . -x '(\.venv|node_modules)'
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: compile
+    # Skip cleanly on forks / until the secret is configured
+    if: ${{ github.event_name == 'push' }}
+    env:
+      HAS_CERT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ env.HAS_CERT == 'true' }}
+      - uses: actions/setup-python@v5
+        if: ${{ env.HAS_CERT == 'true' }}
+        with:
+          python-version: "3.11"
+      - name: Install deps + browser
+        if: ${{ env.HAS_CERT == 'true' }}
+        run: |
+          pip install pipenv
+          pipenv install --dev
+          pipenv run playwright install chromium --with-deps
+      - name: Write Firebase service account
+        if: ${{ env.HAS_CERT == 'true' }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/data"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/data/theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json"
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Run E2E suite (isolated E2E-TEST windows, auto-cleanup)
+        if: ${{ env.HAS_CERT == 'true' }}
+        run: |
+          export DATA_FOLDER="$RUNNER_TEMP/data/"
+          pipenv run pytest tests/e2e/ -q --browser chromium

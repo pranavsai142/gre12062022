@@ -43,16 +43,24 @@ for c in clients:
 - `npc_manager.py`: Batch create/list/delete + tagging.
 - `server.py`: Flask dashboard on 5555 for interactive control and running scale scenarios.
 
-## Scale Scenarios
+## Scale Scenarios (`scenarios.py` — the real engine since 2026-07)
 
-The server and manager support full-cycle runs:
-- Point site at a dedicated test window (via operator panel or direct).
-- Spawn drafters → they submit policies/amendments.
-- Spawn voters → they cast ballots.
-- Promote.
-- Report participation, timings, winners.
+`run_full_cycle()` executes the whole governance loop through the production
+HTTP surface and returns a metrics dict:
 
-Use `TARGET_BASE_URL` env var if the main app is not on 5000.
+1. An operator NPC sets the site-wide window override to an isolated `SCALE-` window.
+2. Drafters create + submit real policies (concurrent).
+3. Voters each cast one immutable ballot via `/ballot-items` + `/submit-ballot` (concurrent, deterministic yes/no/abstain split).
+4. Integrity checks: exact tallies, participation == votes == N, double-vote rejected.
+5. Operator promotes via `/close-window`; skipped automatically if real canidate items are live.
+6. Optional full cleanup (window data, scenario policies, NPC auth users) + override cleared.
+
+Used by the dashboard button, `tests/e2e/test_governance_cycle.py` (small, always-on)
+and `tests/e2e/test_scale_voting.py` (100 voters, `RUN_SCALE=1`).
+
+Use `TARGET_BASE_URL` env var if the main app is not on 5000 (including a
+deployed Render URL). Safety: non-`SCALE-`/`TEST-`/`E2E-` windows are refused
+unless `ALLOW_REAL_WINDOW=1`.
 
 ## Cleanup
 
