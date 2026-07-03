@@ -14,3 +14,6 @@ prefab-ui = "*"
 gunicorn = "*"
 
 [dev-packages]
+pytest = "*"
+playwright = "*"
+pytest-playwright = "*"
