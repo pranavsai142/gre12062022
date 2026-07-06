@@ -161,6 +161,7 @@ See also:
 - `notes/GROK/handoffs/2026-06-21-playwright-npc-testing-scale-harness.md`
 - `npc/README.md`
 - `tests/README.md`
+- **TESTING_STRATEGY.md** (the comprehensive scale/load/E2E master plan + dev gates, created 2026-07-03). Use it for all serious scale work and as a driver for architecture decisions.
 
 ## Production Deploy Shakeout & Approval Process (Auto-Deploy on main)
 

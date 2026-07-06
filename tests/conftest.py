@@ -44,7 +44,12 @@ def _run_live_server(port: int):
 
 @pytest.fixture(scope="session")
 def live_server():
-    """Start a live PlotterApp on a free port. Returns the base URL."""
+    """Start a live PlotterApp on a free port. Returns the base URL.
+    DISABLED when a prod target (TARGET_BASE_URL or --base-url) is set.
+    This makes prod-targeted pytest runs structurally unable to start local Flask."""
+    override = os.environ.get("TARGET_BASE_URL") or ""
+    if override and "theinternetparty.us" in override:
+        raise RuntimeError("local server disabled for prod TARGET_BASE_URL=https://theinternetparty.us")
     global _live_server_thread, _live_server_port
     if _live_server_port is not None:
         return f"http://127.0.0.1:{_live_server_port}"
@@ -76,10 +81,9 @@ def live_server():
 
 @pytest.fixture(scope="session")
 def base_url(request):
-    """Base URL for the app under test. Respects --base-url if provided.
-    Session-scoped because pytest-base-url's session fixtures consume it.
-    Only starts the in-process live server when no --base-url is given."""
-    override = request.config.getoption("--base-url")
+    """Base URL. If --base-url or TARGET_BASE_URL (prod) is set, return it directly.
+    Never falls back to live_server for prod targets (prevents local Flask)."""
+    override = request.config.getoption("--base-url") or os.environ.get("TARGET_BASE_URL")
     if override:
         return override
     return request.getfixturevalue("live_server")

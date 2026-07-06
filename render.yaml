@@ -46,5 +46,8 @@ services:
         value: "3.13"
 
 # Scaling notes:
-# ~100 concurrent: fine on starter (2 workers x 8 threads)
-# ~10k: increase instances on paid plans + reduce per-request DB chatter
+# ~100 concurrent: fine on starter (2 workers x 8 threads) with current I/O-bound workload.
+# To go beyond one instance: the service must be diskless (no Persistent Disk attached).
+# Manual scaling available on all plans; autoscaling requires Pro+ workspace.
+# ~10k+: paid plan + multiple instances + reduce per-request RTDB chatter (VotePage etc. do several .get() calls).
+# See TESTING_STRATEGY.md for full load testing plan and concurrency model explanation.

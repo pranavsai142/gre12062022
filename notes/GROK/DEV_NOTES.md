@@ -134,6 +134,8 @@ We keep this list deliberately short. Historical status of completed items lives
 
 The next natural wave is making the rules actually bite while keeping the proposal + voting experience delightful.
 
+**Scale & Load Testing Campaign (2026-07-03):** Owner has given green light to treat the current https://theinternetparty.us deployment as the primary test bed ("prod environment but not deployed yet"). See the new `TESTING_STRATEGY.md` (root) for the full phased plan, concrete test cases, metrics, safety rules, run commands, and how testing will drive development (scale gates on governance changes, read optimization requirements, path to higher concurrency, and the 300M moonshot with honest constraints). Baseline E2E + NPC validation runs kicked off against the live URL. Update this section with real results as they arrive.
+
 ## Historical Note
 
 The original `DEV_NOTES_AND_IMPLEMENTATION_STATUS.md` (now in `ARCHIVE/`) contained the full 2024 vision dump + exhaustive 2026 exploration mapping + the voting engine delivery log. It was the unedited source artifact. This `DEV_NOTES.md` + `SOUL_DRIVER.md` are the distilled, living, agent-optimized versions that `/init` will actually ask future sessions to read.

@@ -94,6 +94,7 @@ def run_full_cycle(
                 created_policy_ids.append(f.result())
         metrics["drafting_sec"] = round(time.time() - t, 2)
         metrics["policies_created"] = len(created_policy_ids)
+        metrics["created_policy_keys"] = [f"policy-{pid}" for pid in created_policy_ids]
 
         # --- 2. Voters: provision + everyone casts one real ballot (concurrently) ---
         t = time.time()
@@ -199,3 +200,76 @@ def cleanup_scenario(window_id: str, policy_ids=None, prefix: str = "npc-scale-"
     mgr = NPCManager()
     deleted = mgr.delete_all_test(prefix=prefix)
     return {"window_cleared": window_id, "policies_removed": len(policy_ids or []), "npcs_deleted": deleted}
+
+
+def run_s_gov_full(
+    base_url: str = "http://localhost:5000",
+    n_voters: int = 50,
+    **kwargs
+) -> Dict[str, Any]:
+    """S-Gov-Full-50: full governance (drafters + 50 voters + promote) with extra public/ballot checks.
+    Returns metrics dict + 'ballot_items_ok' after promote.
+    """
+    call_kwargs = dict(kwargs)
+    call_kwargs.setdefault("promote", True)
+    call_kwargs.setdefault("cleanup", True)
+    m = run_full_cycle(base_url=base_url, n_voters=n_voters, **call_kwargs)
+    # Post-promote public checks (test items should be gone from canidate/live ballot or moved)
+    try:
+        import requests
+        r = requests.get(f"{base_url.rstrip('/')}/ballot-items", timeout=15)
+        live_keys = {item.get("key") for item in r.json().get("items", [])}
+        created = set(m.get("created_policy_keys", []))
+        # After successful promote, created test keys should not be on the live ballot (they moved to official)
+        m["ballot_items_ok"] = len(created & live_keys) == 0
+    except Exception as e:
+        m["ballot_items_ok"] = False
+        m["ballot_items_check_error"] = str(e)
+    return m
+
+
+def run_phase2_mixed(
+    base_url: str = "http://localhost:5000",
+    n_voters: int = 200,
+    n_readers: int = 20,
+    reader_rounds: int = 3,
+    **kwargs
+) -> Dict[str, Any]:
+    """Phase 2 mixed: voters + concurrent readers (GETs to public pages during voter load) + operator actions.
+    Readers run in parallel threads with the voter phase for true concurrency.
+    """
+    import requests
+    import concurrent.futures as cf
+
+    reader_latencies = []
+    reader_errors = []
+
+    def _reader_round(_):
+        for _ in range(reader_rounds):
+            for path in ("/vote", "/ballot-items", "/"):
+                try:
+                    start = time.time()
+                    resp = requests.get(f"{base_url.rstrip('/')}{path}", timeout=10)
+                    reader_latencies.append(time.time() - start)
+                    resp.raise_for_status()
+                except Exception as e:
+                    reader_errors.append(f"{path}:{str(e)[:100]}")
+
+    call_kwargs = dict(kwargs)
+    call_kwargs.setdefault("promote", True)
+    call_kwargs.setdefault("cleanup", True)
+
+    t0 = time.time()
+    with cf.ThreadPoolExecutor(max_workers=max(4, n_readers)) as rex:
+        rfs = [rex.submit(_reader_round, i) for i in range(n_readers)]
+        # Voters run while readers are active in other threads
+        m = run_full_cycle(base_url=base_url, n_voters=n_voters, **call_kwargs)
+        # ensure readers done
+        for f in cf.as_completed(rfs):
+            pass
+    m["reader_wall_sec"] = round(time.time() - t0, 2)
+    m["reader_latencies"] = len(reader_latencies)
+    m["reader_errors"] = reader_errors
+    m["reader_p50_ms"] = round(_percentile(reader_latencies, 50) * 1000) if reader_latencies else 0
+    m["reader_p95_ms"] = round(_percentile(reader_latencies, 95) * 1000) if reader_latencies else 0
+    return m
