@@ -13,62 +13,70 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Get a reference to the Firebase Auth service
 const auth = firebase.auth();
 
-// Function to handle login
-function handleRegister() {
-    //Clear errorMessage span
-    document.getElementById("errorMessage").textContent=""
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    if(password != confirmPassword) {
-        document.getElementById("errorMessage").textContent="Passwords do not match."
-    } else {
-        auth.createUserWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            // Signed in 
-            var user = userCredential.user;
-            console.log("User registered:", user);
-            // Here you might want to notify the server or update UI
+function showRegisterError(message) {
+  const errEl = document.getElementById("errorMessage");
+  if (!errEl) return;
+  if (!message) {
+    errEl.textContent = "";
+    errEl.style.display = "none";
+    return;
+  }
+  errEl.textContent = message;
+  errEl.style.display = "block";
+}
+
+/** Exchange Firebase ID token for a Flask session, then follow redirect to /account. */
+function establishServerSession(idToken) {
+  return fetch("/validate-token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken: idToken }),
+  }).then(function (response) {
+    if (response.redirected) {
+      window.location.href = response.url;
+      return;
+    }
+    if (!response.ok) {
+      return response
+        .json()
+        .then(function (data) {
+          showRegisterError(
+            (data && (data.error || data.message)) ||
+              "Authentication failed. Please try again."
+          );
         })
-        .catch((error) => {
-            var errorCode = error.code;
-            var errorMessage = error.message;
-            console.error("Register error:", errorCode, errorMessage);
-            document.getElementById("errorMessage").textContent=errorMessage
-            // Display error to user
+        .catch(function () {
+          showRegisterError("Authentication failed. Please try again.");
         });
     }
-    firebase.auth().onAuthStateChanged(user => {
-        if (user) {
-            user.getIdToken().then(idToken => {
-                fetch('/validate-token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ idToken })
-                }).then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url; // Redirect to the new URL
-                    } else if (!response.ok) {
-                        return response.json().then(data => {
-                            if (data.authenticated === false) {
-                                console.error("Authentication failed:", data);
-                            }
-                        });
-                    }
-                }).catch(error => {
-                    console.error("Error validating token:", error);
-                });
-            });
-        } else {
-            console.log("No user is signed in.");
-        }
+  });
+}
+
+function handleRegister() {
+  showRegisterError("");
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  const confirmPassword = document.getElementById("confirmPassword").value;
+
+  if (password !== confirmPassword) {
+    showRegisterError("Passwords do not match.");
+    return;
+  }
+
+  // One-shot path: create user → token → server session.
+  // Do NOT register onAuthStateChanged here — each click would stack listeners.
+  auth
+    .createUserWithEmailAndPassword(email, password)
+    .then(function (userCredential) {
+      return userCredential.user.getIdToken();
+    })
+    .then(establishServerSession)
+    .catch(function (error) {
+      console.error("Register error:", error.code, error.message);
+      showRegisterError(error.message || "Registration failed.");
     });
 }
 
-// Add event listener to the login button
-document.getElementById('registerButton').addEventListener('click', handleRegister);
+document.getElementById("registerButton").addEventListener("click", handleRegister);

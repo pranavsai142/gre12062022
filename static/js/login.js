@@ -13,60 +13,64 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Get a reference to the Firebase Auth service
 const auth = firebase.auth();
 
-// Function to handle login
-function handleLogin() {
-    //Clear errorMessage span
-    document.getElementById("errorMessage").textContent=""
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
+function showLoginError(message) {
+  const errEl = document.getElementById("errorMessage");
+  if (!errEl) return;
+  if (!message) {
+    errEl.textContent = "";
+    errEl.style.display = "none";
+    return;
+  }
+  errEl.textContent = message;
+  errEl.style.display = "block";
+}
 
-    auth.signInWithEmailAndPassword(email, password)
-    .then((userCredential) => {
-        // Signed in 
-        var user = userCredential.user;
-        console.log("User signed in:", user);
-        // Here you might want to notify the server or update UI
+/** Exchange Firebase ID token for a Flask session, then follow redirect to /account. */
+function establishServerSession(idToken) {
+  return fetch("/validate-token", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken: idToken }),
+  }).then(function (response) {
+    if (response.redirected) {
+      window.location.href = response.url;
+      return;
+    }
+    if (!response.ok) {
+      return response
+        .json()
+        .then(function (data) {
+          showLoginError(
+            (data && (data.error || data.message)) ||
+              "Authentication failed. Please try again."
+          );
+        })
+        .catch(function () {
+          showLoginError("Authentication failed. Please try again.");
+        });
+    }
+  });
+}
+
+function handleLogin() {
+  showLoginError("");
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  // One-shot path: sign in → token → server session.
+  // Do NOT register onAuthStateChanged here — each click would stack listeners.
+  auth
+    .signInWithEmailAndPassword(email, password)
+    .then(function (userCredential) {
+      return userCredential.user.getIdToken();
     })
-    .catch((error) => {
-        var errorCode = error.code;
-        var errorMessage = error.message;
-        console.error("Login error:", errorCode, errorMessage);
-        const errEl = document.getElementById("errorMessage");
-        errEl.textContent = errorMessage;
-        errEl.style.display = 'block';
-        // Display error to user
-    });
-    firebase.auth().onAuthStateChanged(user => {
-        if (user) {
-            user.getIdToken().then(idToken => {
-                fetch('/validate-token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ idToken })
-                }).then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url; // Redirect to the new URL
-                    } else if (!response.ok) {
-                        return response.json().then(data => {
-                            if (data.authenticated === false) {
-                                console.error("Authentication failed:", data);
-                            }
-                        });
-                    }
-                }).catch(error => {
-                    console.error("Error validating token:", error);
-                });
-            });
-        } else {
-            console.log("No user is signed in.");
-        }
+    .then(establishServerSession)
+    .catch(function (error) {
+      console.error("Login error:", error.code, error.message);
+      showLoginError(error.message || "Sign-in failed.");
     });
 }
 
-// Add event listener to the login button
-document.getElementById('loginButton').addEventListener('click', handleLogin);
+document.getElementById("loginButton").addEventListener("click", handleLogin);

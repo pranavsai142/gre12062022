@@ -45,10 +45,26 @@ def _stable_secret_key():
 
 app.secret_key = _stable_secret_key()
 
+# Session cookies: HttpOnly always; SameSite=Lax for CSRF-ish safety on POSTs from
+# our own origin; Secure on Render/HTTPS so live deploy does not leak session over HTTP.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+if os.environ.get("RENDER") or os.environ.get("FORCE_SECURE_COOKIES") == "1":
+    app.config["SESSION_COOKIE_SECURE"] = True
+
 
 def _json_body():
     """Safe JSON body for API routes — empty/malformed must not become HTML 400s."""
     return request.get_json(silent=True) or {}
+
+
+@app.after_request
+def _security_headers(response):
+    """Baseline headers for a live civic site (no CSP yet — Firebase CDNs need room)."""
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return response
 
 
 @app.route('/healthz')
