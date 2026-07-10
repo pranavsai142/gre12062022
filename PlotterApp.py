@@ -62,9 +62,12 @@ def healthz():
 
 @app.route('/validate-token', methods=['POST'])
 def validate_token():
-    data = request.get_json()
+    # silent=True: empty/malformed body must not AttributeError into a 500
+    data = request.get_json(silent=True) or {}
     id_token = data.get('idToken')
-    
+    if not id_token:
+        return jsonify({"authenticated": False, "error": "Missing idToken"}), 401
+
     try:
         # Verify the token and decode it. clock_skew_seconds tolerates freshly
         # minted tokens from clients whose clock is a second or two off — without
