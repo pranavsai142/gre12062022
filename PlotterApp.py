@@ -406,6 +406,7 @@ def public_status():
         payload["nextWindowId"] = clock.get("nextWindowId")
         payload["endsAt"] = clock.get("endsAt")
         payload["secondsRemaining"] = clock.get("secondsRemaining")
+        payload["remainingLabel"] = clock.get("remainingLabel")
         payload["isOverride"] = clock.get("isOverride")
         payload["serverNow"] = clock.get("serverNow")
         payload["timezone"] = clock.get("timezone", "UTC")

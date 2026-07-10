@@ -331,7 +331,7 @@ def render(user):
                      data-phase="{{ clock.phase }}"
                      data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
                     <span class="vc-countdown">
-                        {% if clock.endsAt %}Window {{ clock.windowId }} ends {{ clock.endsAt }} (UTC){% else %}Loading clock…{% endif %}
+                        {% if clock.endsAt %}Closes in {{ clock.remainingLabel }} · next {{ clock.nextWindowId }}{% else %}Loading clock…{% endif %}
                     </span>
                 </div>
 

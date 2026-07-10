@@ -183,6 +183,7 @@ def test_home_embeds_clock(client):
     html = r.data.decode("utf-8")
     assert "data-voting-clock" in html
     assert "voting-clock.js" in html
+    assert "Closes in" in html
 
 
 def test_about_documents_real_world_windows(client):
@@ -194,9 +195,19 @@ def test_about_documents_real_world_windows(client):
 
 
 def test_login_and_register_embed_compact_clock(client):
-    for path in ("/login", "/register"):
+    for path in ("/login", "/register", "/reset"):
         r = client.get(path)
         assert r.status_code == 200, path
         html = r.data.decode("utf-8")
         assert "data-voting-clock" in html, path
         assert "voting-clock.js" in html, path
+        assert "Closes in" in html, path
+
+
+def test_status_includes_remaining_label(client):
+    r = client.get("/status")
+    assert r.status_code in (200, 503)
+    body = r.get_json()
+    if body.get("status") == "ok":
+        assert body.get("remainingLabel")
+        assert "m" in body["remainingLabel"] or "h" in body["remainingLabel"] or "d" in body["remainingLabel"]

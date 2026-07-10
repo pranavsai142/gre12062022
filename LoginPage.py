@@ -1,9 +1,14 @@
 from flask import Flask, render_template_string
 import User
+import Database
 
 def render(user):
     if(not User.validateUser(user)):
         user = None
+    try:
+        clock = Database.getVotingClock()
+    except Exception:
+        clock = {"endsAt": "", "remainingLabel": "", "windowId": "", "nextWindowId": ""}
     return render_template_string('''
         <!doctype html>
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -236,8 +241,17 @@ def render(user):
 
             <div class="content">
 
-                <div class="voting-clock" data-voting-clock data-compact="1">
-                    <span class="vc-countdown">Loading voting clock…</span>
+                <div class="voting-clock"
+                     data-voting-clock
+                     data-compact="1"
+                     data-window-id="{{ clock.windowId }}"
+                     data-next-window="{{ clock.nextWindowId }}"
+                     data-ends-at="{{ clock.endsAt or '' }}"
+                     data-server-now="{{ clock.serverNow }}"
+                     data-override="{{ '1' if clock.isOverride else '0' }}"
+                     data-phase="{{ clock.phase }}"
+                     data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
+                    <span class="vc-countdown">{% if clock is defined and clock.endsAt %}Closes in {{ clock.remainingLabel }}{% elif clock is defined and clock.remainingLabel %}Closes in {{ clock.remainingLabel }}{% else %}Loading clock…{% endif %}</span>
                 </div>
 
                 <div class="auth-header">
@@ -274,4 +288,4 @@ def render(user):
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user)
+    ''', user=user, clock=clock)
