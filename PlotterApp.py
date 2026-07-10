@@ -58,6 +58,34 @@ def _json_body():
     return request.get_json(silent=True) or {}
 
 
+def _release_info():
+    """Short build identity so we can verify which commit is live after deploy.
+    Prefer Render's injected git metadata; fall back to local git when available.
+    """
+    sha = (
+        os.environ.get("RENDER_GIT_COMMIT")
+        or os.environ.get("GIT_COMMIT")
+        or ""
+    ).strip()
+    if not sha:
+        try:
+            import subprocess
+            sha = subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                stderr=subprocess.DEVNULL,
+                cwd=os.path.dirname(os.path.abspath(__file__)) or ".",
+                timeout=2,
+            ).decode("utf-8", "replace").strip()
+        except Exception:
+            sha = ""
+    short = sha[:7] if sha else "unknown"
+    return {
+        "revision": short,
+        "revisionFull": sha or None,
+        "service": "the-internet-party",
+    }
+
+
 @app.after_request
 def _security_headers(response):
     """Baseline headers for a live civic site (no CSP yet — Firebase CDNs need room)."""
@@ -72,26 +100,30 @@ def healthz():
     """Lightweight health endpoint for Render health checks / uptime monitors.
     Shallow by default (no RTDB roundtrip per ping); pass ?deep=1 to also
     verify database connectivity and report the live voting window clock."""
+    release = _release_info()
     if request.args.get("deep"):
         try:
             from firebase_admin import db as _db
             _db.reference("meta").get(shallow=True)
         except Exception as e:
-            return jsonify({"status": "degraded", "database": str(e)}), 503
+            return jsonify({"status": "degraded", "database": str(e), **release}), 503
         try:
             clock = Database.getVotingClock()
         except Exception as e:
-            return jsonify({"status": "ok", "database": "ok", "clock_error": str(e)})
+            return jsonify({"status": "ok", "database": "ok", "clock_error": str(e), **release})
         return jsonify({
             "status": "ok",
             "database": "ok",
             "windowId": clock.get("windowId"),
             "realWindowId": clock.get("realWindowId"),
             "secondsRemaining": clock.get("secondsRemaining"),
+            "remainingLabel": clock.get("remainingLabel"),
             "endsAt": clock.get("endsAt"),
             "isOverride": clock.get("isOverride"),
+            **release,
         })
-    return jsonify({"status": "ok"})
+    # Shallow: keep cheap for Render probes, but include revision for deploy checks
+    return jsonify({"status": "ok", "revision": release["revision"]})
 
 @app.route('/validate-token', methods=['POST'])
 def validate_token():
@@ -391,7 +423,8 @@ def voting_clock():
 def public_status():
     """Public ops/status JSON: health + live voting window in one call.
     Useful for monitors and for proving the platform is on real calendar time."""
-    payload = {"status": "ok", "service": "the-internet-party"}
+    release = _release_info()
+    payload = {"status": "ok", **release}
     try:
         from firebase_admin import db as _db
         _db.reference("meta").get(shallow=True)

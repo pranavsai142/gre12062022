@@ -143,6 +143,8 @@ def test_healthz_deep_includes_window_clock(client):
     assert body.get("database") == "ok"
     assert "windowId" in body
     assert "secondsRemaining" in body
+    assert body.get("remainingLabel")
+    assert body.get("revision")
 
 
 def test_ballot_items_includes_clock(client):
@@ -192,6 +194,8 @@ def test_about_documents_real_world_windows(client):
     html = r.data.decode("utf-8")
     assert "ISO week" in html or "Monday 00:00 UTC" in html
     assert "/voting-clock" in html
+    assert "data-voting-clock" in html
+    assert "Closes in" in html
 
 
 def test_login_and_register_embed_compact_clock(client):

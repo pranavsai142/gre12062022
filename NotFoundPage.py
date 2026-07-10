@@ -125,7 +125,15 @@ def render(user):
                 <div class="notfound">
                     <h2>Page Not Found</h2>
                     <p>The page you are looking for does not exist or has moved.</p>
-                    <p><a href="{{ url_for('index') }}" style="color:#ff6600;font-weight:600;">Return to Home →</a></p>
+                    <p style="margin-top:14px;">
+                        <a href="{{ url_for('index') }}" style="color:#ff6600;font-weight:600;">Home</a>
+                        &nbsp;·&nbsp;
+                        <a href="{{ url_for('vote') }}" style="color:#ff6600;font-weight:600;">This week's ballot</a>
+                        &nbsp;·&nbsp;
+                        <a href="{{ url_for('policy') }}" style="color:#ff6600;font-weight:600;">Congressional Library</a>
+                        &nbsp;·&nbsp;
+                        <a href="{{ url_for('about') }}" style="color:#ff6600;font-weight:600;">About</a>
+                    </p>
                 </div>
             </div>
             <footer>

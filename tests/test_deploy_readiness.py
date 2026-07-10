@@ -37,6 +37,9 @@ def test_healthz_shallow_returns_ok(client):
     assert body.get("status") == "ok"
     # Shallow check does not require a database key
     assert "database" not in body or body.get("database") == "ok"
+    # Deploy identity for verifying production after push
+    assert body.get("revision")
+    assert len(str(body.get("revision"))) >= 4
 
 
 def test_healthz_deep_returns_ok_when_firebase_available(client):

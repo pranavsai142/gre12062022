@@ -1,9 +1,15 @@
 from flask import Flask, render_template_string
 import User
+import Database
 
 def render(user):
     if(not User.validateUser(user)):
         user = None
+    try:
+        clock = Database.getVotingClock()
+    except Exception:
+        clock = {"endsAt": "", "remainingLabel": "", "windowId": "", "nextWindowId": "",
+                 "serverNow": "", "isOverride": False, "phase": "open", "secondsToRealWeekEnd": 0}
     return render_template_string('''
         <!doctype html>
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -65,6 +71,26 @@ def render(user):
                 color: #ff6600;
                 font-weight: bold;
             }
+
+            .voting-clock {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 8px 14px;
+                background: #fff7ed;
+                border: 1px solid #ffcc99;
+                border-left: 6px solid #ff6600;
+                padding: 10px 14px;
+                margin: 0 0 18px;
+                border-radius: 6px;
+            }
+            .voting-clock .vc-countdown {
+                font-weight: 700;
+                color: #cc5200;
+                font-variant-numeric: tabular-nums;
+            }
+            .voting-clock .vc-detail { color: #555; font-size: 0.9em; }
+
             .about-section { margin-bottom: 36px; }
             .about-section h2 { border-bottom: 3px solid #ff6600; padding-bottom: 6px; }
             .meta { background:#fff9e6; padding:16px; border-left:6px solid #cc9900; margin:16px 0; }
@@ -124,6 +150,19 @@ def render(user):
             </div>
 
             <div class="content">
+
+                <div class="voting-clock"
+                     data-voting-clock
+                     data-window-id="{{ clock.windowId }}"
+                     data-next-window="{{ clock.nextWindowId }}"
+                     data-ends-at="{{ clock.endsAt or '' }}"
+                     data-server-now="{{ clock.serverNow }}"
+                     data-override="{{ '1' if clock.isOverride else '0' }}"
+                     data-phase="{{ clock.phase }}"
+                     data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
+                    <span class="vc-countdown">{% if clock.endsAt %}Closes in {{ clock.remainingLabel }} · next {{ clock.nextWindowId }}{% else %}Loading clock…{% endif %}</span>
+                </div>
+
                 <h2>About The Internet Party (Party No. 3)</h2>
 
                 <div class="about-section">
@@ -183,9 +222,10 @@ def render(user):
                 </div>
             </div>
 
+            <script src="{{ url_for('static', filename='js/voting-clock.js') }}"></script>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user)
+    ''', user=user, clock=clock)
