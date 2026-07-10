@@ -58,7 +58,7 @@ def render(user, policyId):
         except Exception:
             pass  # never break the detail page
 
-    return render_template_string('''
+    html = render_template_string('''
         <!doctype html>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Policy Detail</title>
@@ -500,3 +500,5 @@ def render(user, policyId):
     ''', user=user, policy=policy,
          candidate_amendments=candidate_amendments,
          official_amendments=official_amendments)
+    # (html, found) so the route can return real HTTP 404 for missing policies
+    return html, bool(policy)

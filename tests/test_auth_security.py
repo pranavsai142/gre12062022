@@ -59,6 +59,15 @@ def test_security_headers_present(client):
     assert "strict-origin" in (r.headers.get("Referrer-Policy") or "")
 
 
+def test_missing_detail_returns_http_404(client):
+    r = client.get("/detail/definitely-not-a-real-policy-id-zzz")
+    assert r.status_code == 404
+    assert b"not found" in r.data.lower()
+    r2 = client.get("/detail/amendment/definitely-not-a-real-amendment-id-zzz")
+    assert r2.status_code == 404
+    assert b"not found" in r2.data.lower()
+
+
 def test_session_cookie_config():
     from PlotterApp import app
 

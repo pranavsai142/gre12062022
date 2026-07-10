@@ -11,7 +11,11 @@ def fake_user():
 
 def render_html(render_fn, *args, **kwargs):
     with app.test_request_context("/"):
-        return render_fn(*args, **kwargs)
+        out = render_fn(*args, **kwargs)
+        # Detail pages return (html, found) for HTTP 404 support
+        if isinstance(out, tuple):
+            return out[0]
+        return out
 
 def get_path_html(path):
     c = app.test_client()

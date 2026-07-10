@@ -122,6 +122,23 @@ def isVotingOpen(window_id=None):
     return True
 
 
+def formatCountdownDuration(seconds):
+    """Human label for a remaining-second count (matches voting-clock.js)."""
+    try:
+        total = max(0, int(seconds))
+    except (TypeError, ValueError):
+        return "—"
+    d = total // 86400
+    h = (total % 86400) // 3600
+    m = (total % 3600) // 60
+    s = total % 60
+    if d > 0:
+        return f"{d}d {h:02d}h {m:02d}m {s:02d}s"
+    if h > 0:
+        return f"{h:02d}h {m:02d}m {s:02d}s"
+    return f"{m:02d}m {s:02d}s"
+
+
 def getVotingClock(now=None):
     """Real-world voting clock for the effective window + calendar context.
 
@@ -160,6 +177,7 @@ def getVotingClock(now=None):
         starts_at = None
         ends_at = None
 
+    remaining_label = formatCountdownDuration(seconds_remaining)
     return {
         "windowId": effective,
         "realWindowId": real_window,
@@ -172,6 +190,7 @@ def getVotingClock(now=None):
         "startsAt": starts_at,
         "endsAt": ends_at,
         "secondsRemaining": seconds_remaining,
+        "remainingLabel": remaining_label,
         "realWeekStartsAt": real_start.isoformat().replace("+00:00", "Z"),
         "realWeekEndsAt": real_end.isoformat().replace("+00:00", "Z"),
         "secondsToRealWeekEnd": seconds_to_real_end,

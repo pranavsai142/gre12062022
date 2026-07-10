@@ -118,7 +118,7 @@ def render(user, amendmentId):
             amendment.getTitle(), amendment.getDescription()
         )
 
-    return render_template_string('''
+    html = render_template_string('''
         <!doctype html>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Amendment Detail</title>
@@ -592,3 +592,4 @@ def render(user, amendmentId):
             </footer>
         </body>
     ''', user=user, amendment=amendment, policy=policy, diff_html=diff_html)
+    return html, bool(amendment)

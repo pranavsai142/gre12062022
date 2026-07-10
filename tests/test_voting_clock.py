@@ -17,6 +17,13 @@ import Database
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_format_countdown_duration():
+    assert Database.formatCountdownDuration(0) == "00m 00s"
+    assert Database.formatCountdownDuration(65) == "01m 05s"
+    assert Database.formatCountdownDuration(3661) == "01h 01m 01s"
+    assert "d " in Database.formatCountdownDuration(90061)
+
+
 def test_parse_iso_window_id():
     assert Database.parseIsoWindowId("2026-W28") == (2026, 28)
     assert Database.parseIsoWindowId("2026-W01") == (2026, 1)
@@ -60,6 +67,8 @@ def test_get_voting_clock_fixed_now_inside_week():
     # From Thu noon to next Mon 00:00 = 3.5 days = 302400 seconds
     assert clock["secondsRemaining"] == 3 * 86400 + 12 * 3600
     assert clock["secondsToRealWeekEnd"] == clock["secondsRemaining"]
+    assert clock["remainingLabel"] == Database.formatCountdownDuration(clock["secondsRemaining"])
+    assert "d " in clock["remainingLabel"]
 
 
 def test_get_voting_clock_override_synthetic_window():
@@ -156,6 +165,8 @@ def test_vote_page_embeds_clock_and_script(client):
     # Explicit data-window-id for vote.js (do not scrape prose)
     assert 'data-window-id="' in html
     assert 'id="ballot-root"' in html or "ballot-header" in html
+    # Server-rendered human countdown (works before JS hydrates)
+    assert "Closes in" in html
 
 
 def test_vote_js_reads_data_window_id_not_prose():

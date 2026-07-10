@@ -642,13 +642,13 @@ def drafts():
     
 @app.route('/detail/<policyId>')
 def detail(policyId):
-    htmlString = DetailPage.render(session.get("user"), policyId)
-    return htmlString
+    htmlString, found = DetailPage.render(session.get("user"), policyId)
+    return htmlString, (200 if found else 404)
 
 @app.route('/detail/amendment/<amendmentId>')
 def detail_amendment(amendmentId):
-    htmlString = DetailAmendmentPage.render(session.get("user"), amendmentId)
-    return htmlString
+    htmlString, found = DetailAmendmentPage.render(session.get("user"), amendmentId)
+    return htmlString, (200 if found else 404)
 
 @app.route('/register')
 def register():
