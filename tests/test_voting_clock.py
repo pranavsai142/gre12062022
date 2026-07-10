@@ -123,6 +123,7 @@ def test_voting_clock_js_resyncs_and_reloads_on_boundary():
     assert "maybeReloadForNewWeek" in js
     assert "visibilitychange" in js
     assert "cache: \"no-store\"" in js or "cache: 'no-store'" in js
+    assert "prefers-reduced-motion" in js
 
 
 def test_healthz_deep_includes_window_clock(client):

@@ -64,3 +64,23 @@ def test_session_cookie_config():
 
     assert app.config.get("SESSION_COOKIE_HTTPONLY") is True
     assert app.config.get("SESSION_COOKIE_SAMESITE") == "Lax"
+
+
+def test_reset_page_is_functional_not_stub(client):
+    """Password reset must be a real Firebase email flow, not a placeholder card."""
+    r = client.get("/reset")
+    assert r.status_code == 200
+    html = r.data.decode("utf-8")
+    assert "contact support for now" not in html.lower()
+    assert "reset.js" in html
+    assert 'id="resetButton"' in html
+    assert 'id="email"' in html
+    assert "firebase-auth" in html
+    assert "data-voting-clock" in html
+
+
+def test_reset_js_sends_firebase_reset_email():
+    js = (REPO_ROOT / "static" / "js" / "reset.js").read_text()
+    assert "sendPasswordResetEmail" in js
+    assert "handleReset" in js
+    assert "auth/user-not-found" in js  # non-enumerating success path

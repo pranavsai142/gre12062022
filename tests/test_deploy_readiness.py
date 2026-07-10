@@ -51,7 +51,7 @@ def test_healthz_deep_returns_ok_when_firebase_available(client):
 
 def test_public_primary_routes_ok(client):
     """Spot-check the public surface that deploy traffic hits first."""
-    for path in ("/", "/vote", "/policy", "/about", "/login", "/ballot-items", "/voting-clock", "/robots.txt"):
+    for path in ("/", "/vote", "/policy", "/about", "/login", "/register", "/reset", "/ballot-items", "/voting-clock", "/status", "/robots.txt"):
         r = client.get(path)
         assert r.status_code == 200, f"{path} -> {r.status_code}"
         assert r.data and len(r.data) > 10, f"{path} empty body"

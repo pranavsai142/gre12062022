@@ -159,7 +159,11 @@
     tick();
     if (el._vcTimer) clearInterval(el._vcTimer);
     if (el._vcResync) clearInterval(el._vcResync);
-    el._vcTimer = setInterval(tick, 1000);
+    // Respect reduced-motion: still show accurate remaining time, but avoid 1Hz DOM thrash
+    var reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el._vcTimer = setInterval(tick, reduceMotion ? 15000 : 1000);
     el._vcResync = setInterval(resync, RESYNC_MS);
 
     // Resync when tab becomes visible again (laptop sleep / background tab)
