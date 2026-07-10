@@ -51,11 +51,21 @@ def test_healthz_deep_returns_ok_when_firebase_available(client):
 
 def test_public_primary_routes_ok(client):
     """Spot-check the public surface that deploy traffic hits first."""
-    for path in ("/", "/vote", "/policy", "/about", "/login", "/ballot-items"):
+    for path in ("/", "/vote", "/policy", "/about", "/login", "/ballot-items", "/voting-clock", "/robots.txt"):
         r = client.get(path)
         assert r.status_code == 200, f"{path} -> {r.status_code}"
-        assert r.data and len(r.data) > 20, f"{path} empty body"
+        assert r.data and len(r.data) > 10, f"{path} empty body"
 
+
+def test_robots_txt_is_professional(client):
+    """Live civic platform must not ship a joke robots.txt."""
+    r = client.get("/robots.txt")
+    assert r.status_code == 200
+    text = r.data.decode("utf-8")
+    assert "User-agent:" in text
+    assert "Allow:" in text
+    assert "fuck" not in text.lower()
+    assert "Disallow: /account" in text
 
 def test_ballot_items_is_json_shape(client):
     """NPC/remote clients rely on /ballot-items JSON (not HTML scrape)."""

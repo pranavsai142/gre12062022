@@ -18,6 +18,19 @@ def render(user):
     window = Database.getCurrentVotingWindowId()
     ballot_count = len(canidates) + len(canidateAmendments)
     user_participated = Database.hasUserVotedInWindow(user["uid"], window) if user else False
+    try:
+        clock = Database.getVotingClock()
+    except Exception:
+        clock = {
+            "windowId": window,
+            "realWindowId": window,
+            "nextWindowId": "—",
+            "isOverride": False,
+            "phase": "open",
+            "serverNow": "",
+            "endsAt": "",
+            "secondsToRealWeekEnd": 0,
+        }
 
     # Operator / live dev tools data (fetched server-side for first paint; JS keeps it fresh)
     op_ballot_pols, op_ballot_amends = [], []
@@ -183,6 +196,28 @@ def render(user):
                 max-height: 140px;
                 overflow: auto;
             }
+            .voting-clock {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 8px 16px;
+                background: #fff7ed;
+                border: 1px solid #ffcc99;
+                border-left: 6px solid #ff6600;
+                padding: 12px 16px;
+                margin: 0 0 18px;
+                border-radius: 6px;
+            }
+            .voting-clock .vc-countdown {
+                font-size: 1.1em;
+                font-weight: 700;
+                color: #cc5200;
+                font-variant-numeric: tabular-nums;
+            }
+            .voting-clock .vc-detail {
+                font-size: 0.9em;
+                color: #555;
+            }
             .window-row {
                 display: flex;
                 justify-content: space-between;
@@ -315,6 +350,20 @@ def render(user):
                     <a href="{{ url_for('logout') }}" class="logout">Log out</a>
                 </div>
 
+                <div class="voting-clock"
+                     data-voting-clock
+                     data-window-id="{{ clock.windowId }}"
+                     data-next-window="{{ clock.nextWindowId }}"
+                     data-ends-at="{{ clock.endsAt or '' }}"
+                     data-server-now="{{ clock.serverNow }}"
+                     data-override="{{ '1' if clock.isOverride else '0' }}"
+                     data-phase="{{ clock.phase }}"
+                     data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
+                    <span class="vc-countdown">
+                        {% if clock.endsAt %}Window {{ clock.windowId }} ends {{ clock.endsAt }} (UTC){% else %}Loading clock…{% endif %}
+                    </span>
+                </div>
+
                 {% if global_ballot_count > 0 %}
                 <div class="ballot-notice">
                     <strong>Active ballot this week ({{ window }})</strong> — {{ global_ballot_count }} candidate items on the global ballot.
@@ -403,6 +452,13 @@ def render(user):
                         <!-- Current Window Snapshot -->
                         <div class="op-card" style="background:#fafafa;border:1px solid #eee;padding:12px 14px;margin-bottom:12px;">
                             <h4 style="margin-bottom:8px;">Current Window (effective): <span style="font-family:monospace;">{{ window }}</span> <span style="font-size:0.9em;color:#888;">({{ op_participation }} participants)</span></h4>
+                            <p style="margin:0 0 10px;font-size:0.9em;color:#555;">
+                                Real ISO week: <code>{{ clock.realWindowId }}</code>
+                                {% if clock.isOverride %} · <strong style="color:#c60;">override active</strong>{% endif %}
+                                · next <code>{{ clock.nextWindowId }}</code>
+                                {% if clock.endsAt %} · ends <code>{{ clock.endsAt }}</code>{% endif %}
+                                · <a href="/voting-clock" style="color:#ff6600;">/voting-clock</a>
+                            </p>
                             <div class="op-grid">
                                 <div class="op-stat">
                                     <strong>Ballot items:</strong> {{ op_ballot_pols|length + op_ballot_amends|length }}<br>
@@ -608,6 +664,7 @@ def render(user):
                     }
                 }
                 </script>
+                <script src="{{ url_for('static', filename='js/voting-clock.js') }}"></script>
             </div>
 
             <footer>
@@ -618,6 +675,6 @@ def render(user):
     ''', user=user, drafts=drafts, canidates=canidates, policies=policies,
          draftAmendments=draftAmendments, canidateAmendments=canidateAmendments, amendments=amendments,
          window=window, ballot_count=ballot_count, user_participated=user_participated,
-         global_ballot_count=global_ballot_count,
+         global_ballot_count=global_ballot_count, clock=clock,
          op_ballot_pols=op_ballot_pols, op_ballot_amends=op_ballot_amends, op_tallies=op_tallies,
          op_participation=op_participation, op_all_windows=op_all_windows, op_window_details=op_window_details)

@@ -138,25 +138,27 @@ def render(user):
 
                 <div class="about-section">
                     <h2>How the Weekly Vote Works</h2>
-                    <p>Simple, transparent, and powerful:</p>
+                    <p>Simple, transparent, and powerful — and tied to the <strong>real calendar</strong>:</p>
                     <ol>
                         <li>Any registered member drafts a Policy or an Amendment in their private drafts hub.</li>
                         <li>They save it, then submit it to the canidate queue for the week.</li>
-                        <li>Every Sunday the candidates go on the ballot. Registered members vote Yes / No / Abstain — once.</li>
-                        <li>Majority Yes wins and becomes part of the official living platform.</li>
+                        <li>The live ballot is the canidate pool for the <strong>current ISO week</strong> (Monday 00:00 UTC → next Monday 00:00 UTC). A live countdown on Home and Vote shows exactly when this window ends and the next one begins.</li>
+                        <li>Registered members vote Yes / No / Abstain <strong>once per window</strong>. Ballots are immutable for that week.</li>
+                        <li>Majority Yes (among votes cast) wins; operators promote winners to the official living platform.</li>
                         <li>The official platform is the real law of the party — visible to everyone, changed only by the people.</li>
                     </ol>
-                    <p style="margin-top:12px;"><a href="{{ url_for('vote') }}" style="font-weight:600;color:#ff6600;">See this week's ballot and vote now →</a></p>
+                    <p style="margin-top:12px;"><a href="{{ url_for('vote') }}" style="font-weight:600;color:#ff6600;">See this week's ballot, countdown, and vote now →</a></p>
                 </div>
 
                 <div class="about-section">
                     <h2>The Real Rules (MetaPolicies, explained plainly)</h2>
                     <ul style="line-height:1.7;">
-                        <li><strong>Weekly Sunday vote</strong>: Majority of registered members who cast a ballot decides what passes.</li>
-                        <li><strong>365-day sunset + renewal</strong>: Nothing stays official forever. Every item must be re-approved by vote within a year or it expires.</li>
-                        <li><strong>Title under 100 characters</strong>, full description under 10,000 characters. Keep it tight and clear.</li>
+                        <li><strong>Real-world weekly windows</strong>: ISO weeks in UTC. The site clock at <code>/voting-clock</code> and the timers on Vote/Home tick every second from server time — not fake demo timers.</li>
+                        <li><strong>One immutable ballot per member per window</strong>: You cast once; your choices are final for that week.</li>
+                        <li><strong>Title under 100 characters</strong>, full description under 10,000 characters (enforced server-side). Keep it tight and clear.</li>
+                        <li><strong>365-day sunset + renewal</strong> (roadmap): Nothing stays official forever. Every item must be re-approved within a year or it expires.</li>
                         <li><strong>One human, one membership</strong>: Registration requires your real phone number + name carrier. No bots, no duplicates.</li>
-                        <li><strong>Stay active or lose membership</strong>: Three weeks of inactivity and you are dismissed. Participation keeps the system alive.</li>
+                        <li><strong>Stay active or lose membership</strong> (roadmap): Three weeks of inactivity and you are dismissed. Participation keeps the system alive.</li>
                         <li>Every draft, vote, and promotion is public and permanent in the record.</li>
                     </ul>
                 </div>

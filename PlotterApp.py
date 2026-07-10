@@ -500,7 +500,19 @@ def dev_tools_set_window():
 
 @app.route('/robots.txt')
 def robots_txt():
-    return "fuck off"
+    """Public robots.txt — polite crawl policy for a live civic platform."""
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /account\n"
+        "Disallow: /drafts\n"
+        "Disallow: /admin\n"
+        "Disallow: /dev-tools/\n"
+        "Disallow: /validate-token\n"
+        "\n"
+        "# The Internet Party — public ballot, library, and about pages are open.\n"
+    )
+    return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
     
 @app.route('/')
 def index():

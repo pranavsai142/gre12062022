@@ -297,7 +297,9 @@ def render(user):
                      data-override="{{ '1' if clock.isOverride else '0' }}"
                      data-phase="{{ clock.phase }}"
                      data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
-                    <span class="vc-countdown">Loading clock…</span>
+                    <span class="vc-countdown">
+                        {% if clock.endsAt %}Window {{ clock.windowId }} ends {{ clock.endsAt }} (UTC) · next {{ clock.nextWindowId }}{% else %}Loading clock…{% endif %}
+                    </span>
                 </div>
 
                 <div class="ballot-header">

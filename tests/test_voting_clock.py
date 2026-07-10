@@ -136,3 +136,11 @@ def test_home_embeds_clock(client):
     html = r.data.decode("utf-8")
     assert "data-voting-clock" in html
     assert "voting-clock.js" in html
+
+
+def test_about_documents_real_world_windows(client):
+    r = client.get("/about")
+    assert r.status_code == 200
+    html = r.data.decode("utf-8")
+    assert "ISO week" in html or "Monday 00:00 UTC" in html
+    assert "/voting-clock" in html
