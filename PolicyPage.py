@@ -16,9 +16,21 @@ def render(user):
     drafts = Database.getDraftPolicies(user) if user else []
     draftAmends = Database.getDraftAmendments(user) if user else []
 
-    # Current ballot notice data
+    # Current ballot notice data + real-world voting clock
     window = Database.getCurrentVotingWindowId()
     ballot_count = len(canidates) + len(canidateAmendments)
+    try:
+        clock = Database.getVotingClock()
+    except Exception:
+        clock = {
+            "windowId": window,
+            "nextWindowId": "—",
+            "isOverride": False,
+            "phase": "open",
+            "serverNow": "",
+            "endsAt": "",
+            "secondsToRealWeekEnd": 0,
+        }
 
     # Prepare rich card data (title + excerpt + id + kind + sortable date)
     def _prep_cards(items, kind, status):
@@ -211,6 +223,28 @@ def render(user):
                 border-radius: 6px;
                 margin: 20px 0;
             }
+            .voting-clock {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 8px 16px;
+                background: #fff7ed;
+                border: 1px solid #ffcc99;
+                border-left: 6px solid #ff6600;
+                padding: 12px 16px;
+                margin: 0 0 16px;
+                border-radius: 6px;
+            }
+            .voting-clock .vc-countdown {
+                font-size: 1.05em;
+                font-weight: 700;
+                color: #cc5200;
+                font-variant-numeric: tabular-nums;
+            }
+            .voting-clock .vc-detail {
+                font-size: 0.9em;
+                color: #555;
+            }
             .empty {
                 padding: 40px;
                 text-align: center;
@@ -287,9 +321,23 @@ def render(user):
                     <p><a href="{{ url_for('drafts') }}">+ Draft a new Policy or Amendment</a></p>
                 </div>
 
+                <div class="voting-clock"
+                     data-voting-clock
+                     data-window-id="{{ clock.windowId }}"
+                     data-next-window="{{ clock.nextWindowId }}"
+                     data-ends-at="{{ clock.endsAt or '' }}"
+                     data-server-now="{{ clock.serverNow }}"
+                     data-override="{{ '1' if clock.isOverride else '0' }}"
+                     data-phase="{{ clock.phase }}"
+                     data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
+                    <span class="vc-countdown">
+                        {% if clock.endsAt %}Window {{ clock.windowId }} ends {{ clock.endsAt }} (UTC){% else %}Loading clock…{% endif %}
+                    </span>
+                </div>
+
                 {% if ballot_count > 0 %}
                 <div class="ballot-strip">
-                    <strong>This Week's Ballot (Window {{ window }}) is live</strong> — 
+                    <strong>This Week's Ballot (Window {{ window }}) is live</strong> —
                     {{ ballot_count }} candidate items are currently being voted on.
                     <a href="{{ url_for('vote') }}" style="font-weight:600">Go cast your ballot →</a>
                 </div>
@@ -425,6 +473,7 @@ def render(user):
                     }
                 });
             </script>
+            <script src="{{ url_for('static', filename='js/voting-clock.js') }}"></script>
 
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
@@ -432,4 +481,4 @@ def render(user):
             </footer>
         </body>
     ''', user=user, canidates=canidates, policies=policies, canidateAmendments=canidateAmendments, amendments=amendments,
-         drafts=drafts, draftAmends=draftAmends, lib_items=lib_items, window=window, ballot_count=ballot_count)
+         drafts=drafts, draftAmends=draftAmends, lib_items=lib_items, window=window, ballot_count=ballot_count, clock=clock)

@@ -302,7 +302,7 @@ def render(user):
                     </span>
                 </div>
 
-                <div class="ballot-header">
+                <div class="ballot-header" data-window-id="{{ windowId }}" id="ballot-root">
                     <p><strong>The Internet Party holds regular votes on candidate policies and amendments.</strong></p>
                     <p>Per our MetaPolicies: any registered member may vote once per weekly window. Policies that receive a majority of votes cast are promoted to the official platform.</p>
                     <p><small>Current window: <strong>{{ windowId }}</strong> &nbsp;•&nbsp; Participation so far: <strong>{{ participation }}</strong> members &nbsp;•&nbsp; Weeks run <strong>Monday 00:00 UTC → next Monday</strong> (live countdown above)</small></p>

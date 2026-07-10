@@ -14,15 +14,28 @@ function collectVotes() {
     return votes;
 }
 
+/** Prefer explicit data-window-id (server-rendered). Never scrape prose. */
+function getBallotWindowId() {
+    const root = document.querySelector('[data-window-id]');
+    if (root) {
+        const w = (root.getAttribute('data-window-id') || '').trim();
+        if (w) return w;
+    }
+    const clock = document.querySelector('[data-voting-clock][data-window-id]');
+    if (clock) {
+        const w = (clock.getAttribute('data-window-id') || '').trim();
+        if (w) return w;
+    }
+    return null;
+}
+
 const submitBtn = document.getElementById('submitBallot');
 if (submitBtn) {
     submitBtn.addEventListener('click', function(event) {
         event.preventDefault();
 
         const votes = collectVotes();
-        const windowId = document.querySelector('.ballot-header') 
-            ? (document.querySelector('.ballot-header').textContent.match(/Window\s+([^\s<]+)/) || [])[1]
-            : null;
+        const windowId = getBallotWindowId();
 
         // With abstain as the default, an untouched ballot will submit all abstains.
         // Only block if there are literally no items to vote on.
@@ -69,9 +82,7 @@ if (closeBtn) {
             return;
         }
 
-        const windowId = document.querySelector('.ballot-header') 
-            ? (document.querySelector('.ballot-header').textContent.match(/Window\s+([^\s<]+)/) || [])[1]
-            : null;
+        const windowId = getBallotWindowId();
 
         fetch('/close-window', {
             method: 'POST',

@@ -510,9 +510,29 @@ def robots_txt():
         "Disallow: /dev-tools/\n"
         "Disallow: /validate-token\n"
         "\n"
+        "Sitemap: https://theinternetparty.us/sitemap.xml\n"
+        "\n"
         "# The Internet Party — public ballot, library, and about pages are open.\n"
     )
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    """Minimal public sitemap for the live civic surface (real calendar site)."""
+    base = "https://theinternetparty.us"
+    paths = ["/", "/vote", "/policy", "/about", "/login", "/register"]
+    urls = "\n".join(
+        f"  <url><loc>{base}{p}</loc><changefreq>daily</changefreq></url>"
+        for p in paths
+    )
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{urls}\n"
+        "</urlset>\n"
+    )
+    return body, 200, {"Content-Type": "application/xml; charset=utf-8"}
     
 @app.route('/')
 def index():

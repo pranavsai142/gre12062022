@@ -8,10 +8,13 @@ route (same surface the countdown JS and pages use).
 from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 import pytest
 
 import Database
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_parse_iso_window_id():
@@ -128,6 +131,17 @@ def test_vote_page_embeds_clock_and_script(client):
     assert "voting-clock.js" in html
     assert "data-ends-at" in html
     assert "Monday 00:00 UTC" in html
+    # Explicit data-window-id for vote.js (do not scrape prose)
+    assert 'data-window-id="' in html
+    assert 'id="ballot-root"' in html or "ballot-header" in html
+
+
+def test_vote_js_reads_data_window_id_not_prose():
+    """Regression: fragile text match for 'Window X' broke when copy said 'window:'."""
+    js = (REPO_ROOT / "static" / "js" / "vote.js").read_text()
+    assert "getBallotWindowId" in js
+    assert "data-window-id" in js
+    assert "textContent.match" not in js
 
 
 def test_home_embeds_clock(client):
