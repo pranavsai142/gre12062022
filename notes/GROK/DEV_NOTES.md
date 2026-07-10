@@ -1,6 +1,6 @@
 # DEV_NOTES — The Internet Party (Living Project Reality)
 
-**Last major update:** 2026-07-02 (evening) — **Production readiness + scale validation delivered.** Runtime hardened for Render (stable multi-worker SECRET_KEY, centralized loud-fail Firebase init, `/healthz`, foreground `start.sh`, `render.yaml` blueprint, token clock-skew tolerance, 401-not-500 on bad tokens). First MetaPolicies now bind server-side (title ≤100 / description ≤10,000 on all draft routes; ballots only accepted into the effective current window). NPC/E2E harness matured from scaffolding to real: fixed broken client/server, added `npc/scenarios.py` full-cycle runner + `/ballot-items` JSON route, 6 always-on E2E tests green, and a **validated 100-concurrent-voter run** (0 errors, exact tallies, double-votes rejected, promote correct, ~14s wall on local 1-worker gunicorn). Optional `OPERATOR_EMAILS` allowlist added. CI skeleton in `.github/workflows/ci.yml`. Full details in `handoffs/2026-07-02-production-readiness-scale-validation.md`. This document stays deliberately short and forward-looking.
+**Last major update:** 2026-07-10 — **Live ISO-week voting clock + platform hardening deployed** to https://theinternetparty.us (`revision` a900989). Real-world Monday→Monday UTC windows, public `/voting-clock` + `/status`, SSR + ticking countdowns sitewide, auth/API hardening, professional robots/sitemap, password reset, 404s for missing details. Verify with `./scripts/verify_live_deploy.sh`. Full story in `handoffs/2026-07-10-live-voting-clock-and-platform-hardening.md`. Prior 2026-07-02 production readiness + local 100-voter scale remain foundational (see that day’s handoffs). This document stays deliberately short and forward-looking.
 
 ## Current Big Picture
 
@@ -16,11 +16,11 @@ The project has delivered the **core governance engine** that was the #1 priorit
 - Login/Register fully production-grade (card UI, conditional error boxes, etc.).
 - Amendment detail page shows original policy text cleanly; policy detail page is next for history/pending sections.
 
-The revolutionary heart — actual parallel voting with integrity — is functional. People can propose, amend, vote weekly, and see winners become official policy.
+The revolutionary heart — actual parallel voting with integrity — is functional. People can propose, amend, vote weekly, and see winners become official policy. The live site now surfaces **real ISO-week countdowns** (public APIs + UI) so windows feel calendar-official, not demo timers.
 
 The repository is now focused exclusively on the Internet Party platform.
 
-**Next phase focus:** Polish & correctness (the four open items below), then enforcement of meta-policies (char limits, categories, sunset mechanics, etc.), and fleshing out the public-facing "Congressional Library" / About experience to match the quality of the delivered Vote and Account pages.
+**Next phase focus:** Owner smoke test of the new live surface; optional NPC scale against production URL; then categories/tags, deeper MetaPolicy enforcement (sunsets, inactivity, majority-of-registered), CSS consolidation, and public-experience polish.
 
 ## Hard-Won Lessons (Do Not Re-Learn These)
 
@@ -39,6 +39,8 @@ The repository is now focused exclusively on the Internet Party platform.
 - **Render start commands must run in the foreground.** A backgrounded gunicorn (`… &`) means the start script exits and the service is treated as crashed. Log to stdout for the Render stream.
 - **Scale scenarios must guard promotion.** The ballot is the *live* canidate pool, so an NPC electorate would promote real canidate items. `npc/scenarios.py` skips promote when foreign items are on the ballot; keep that guard.
 - **The testing layer is the delivery gate.** Every future change to routes/pages/governance: run `pipenv run pytest tests/e2e/ --browser chromium` (6 tests, ~30s) before and after; use the NPC full-cycle scenario for anything touching participation, tallies, or promotion (see TESTING.md).
+- **After Render deploys, verify with facts not chat.** `/healthz` includes `revision`; `./scripts/verify_live_deploy.sh` checks `/voting-clock`, `/status`, professional `/robots.txt`, and clock markup on `/vote`.
+- **Never register Firebase `onAuthStateChanged` inside login/register click handlers.** Each click stacked listeners and spammed `/validate-token`. Use one-shot: sign-in → `getIdToken` → `/validate-token`.
 
 ## Information Architecture (Where Everything Actually Lives)
 
@@ -125,17 +127,16 @@ Firebase admin cert required at `$DATA_FOLDER/theinternetparty-...json`.
 We keep this list deliberately short. Historical status of completed items lives in dated handoffs under `handoffs/`.
 
 1. ~~Enforce meta constraints at creation time~~ **DONE 2026-07-02** (server-side ≤100/≤10k on all draft routes + existing UI counters; ballots gated to the current window).
-2. Connect the Render service (one-time manual step: Blueprint from `render.yaml` + upload the admin JSON Secret File), then run the targeted NPC scale test against the live URL.
+2. ~~Live voting clock + deploy hardening~~ **DONE 2026-07-10** (ISO-week timers, `/voting-clock`/`/status`, auth/API polish; verified on theinternetparty.us). Optional: NPC scale against live URL still open.
 3. Add categories/tags to policies + filtering/sorting on the Congressional Library.
 4. Deepen the public experience (stronger empty states, registered-user visibility, clearer "how voting works" moments).
 5. Later true MetaPolicy enforcement (365-day sunset renewal votes, 3-week inactivity dismissal, majority-of-registered threshold — the NPC harness can now simulate the electorates these rules need, stricter Sunday gating).
 6. CSS consolidation (the largest remaining tech debt — every *Page.py still duplicates the base styles).
 7. 10k-scale path when needed: raise Render instance count (autoscaling on paid plans), cache/batch the per-request RTDB reads (VotePage does several per render), then consider sharding. Measure first with `run_full_cycle` at higher N against the deployed URL.
 
-The next natural wave is making the rules actually bite while keeping the proposal + voting experience delightful.
+The next natural wave is making the deeper MetaPolicy rules actually bite while keeping proposal + voting delightful — after smoke-test feedback from the 2026-07-10 live deploy.
 
-**Scale & Load Testing Campaign (2026-07-03):** Owner has given green light to treat the current https://theinternetparty.us deployment as the primary test bed ("prod environment but not deployed yet"). See the new `TESTING_STRATEGY.md` (root) for the full phased plan, concrete test cases, metrics, safety rules, run commands, and how testing will drive development (scale gates on governance changes, read optimization requirements, path to higher concurrency, and the 300M moonshot with honest constraints). Baseline E2E + NPC validation runs kicked off against the live URL. Update this section with real results as they arrive.
-
+**Live test bed:** https://theinternetparty.us is the primary deployed environment. See `TESTING_STRATEGY.md` for scale plans; use `./scripts/verify_live_deploy.sh` after each ship.
 ## Historical Note
 
 The original `DEV_NOTES_AND_IMPLEMENTATION_STATUS.md` (now in `ARCHIVE/`) contained the full 2024 vision dump + exhaustive 2026 exploration mapping + the voting engine delivery log. It was the unedited source artifact. This `DEV_NOTES.md` + `SOUL_DRIVER.md` are the distilled, living, agent-optimized versions that `/init` will actually ask future sessions to read.
