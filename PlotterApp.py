@@ -46,6 +46,11 @@ def _stable_secret_key():
 app.secret_key = _stable_secret_key()
 
 
+def _json_body():
+    """Safe JSON body for API routes — empty/malformed must not become HTML 400s."""
+    return request.get_json(silent=True) or {}
+
+
 @app.route('/healthz')
 def healthz():
     """Lightweight health endpoint for Render health checks / uptime monitors.
@@ -116,7 +121,7 @@ def _validateMetaLimits(title, description):
 
 @app.route("/create-draft", methods=["POST"])
 def create_draft():
-    data = request.get_json()
+    data = _json_body()
     limitError = _validateMetaLimits(data.get("title"), data.get("description"))
     if limitError:
         return jsonify({"success": False, "error": limitError}), 400
@@ -138,12 +143,12 @@ def create_draft():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 401
 
 
 @app.route("/update-draft", methods=["POST"])
 def update_draft():
-    data = request.get_json()
+    data = _json_body()
     limitError = _validateMetaLimits(data.get("title"), data.get("description"))
     if limitError:
         return jsonify({"success": False, "error": limitError}), 400
@@ -166,11 +171,11 @@ def update_draft():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't update draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't update draft policy. No user logged in."}), 401
         
 @app.route("/remove-draft", methods=["POST"])
 def remove_draft():
-    data = request.get_json()
+    data = _json_body()
     policyId = data.get("id")
     sessionUserData = session.get("user")
     if(User.validateUser(sessionUserData)):
@@ -180,11 +185,11 @@ def remove_draft():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't remove draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't remove draft policy. No user logged in."}), 401
         
 @app.route("/submit-draft", methods=["POST"])
 def submit_draft():
-    data = request.get_json()
+    data = _json_body()
     policyId = data.get("id")
     sessionUserData = session.get("user")
     if(User.validateUser(sessionUserData)):
@@ -194,11 +199,11 @@ def submit_draft():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 401
         
 @app.route("/create-draft-amendment", methods=["POST"])
 def create_draft_amendment():
-    data = request.get_json()
+    data = _json_body()
     limitError = _validateMetaLimits(data.get("title"), data.get("description"))
     if limitError:
         return jsonify({"success": False, "error": limitError}), 400
@@ -221,12 +226,12 @@ def create_draft_amendment():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't create draft policy. No user logged in."}), 401
 
 
 @app.route("/update-draft-amendment", methods=["POST"])
 def update_draft_amendment():
-    data = request.get_json()
+    data = _json_body()
     limitError = _validateMetaLimits(data.get("title"), data.get("description"))
     if limitError:
         return jsonify({"success": False, "error": limitError}), 400
@@ -249,11 +254,11 @@ def update_draft_amendment():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish.."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't update draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't update draft policy. No user logged in."}), 401
         
 @app.route("/remove-draft-amendment", methods=["POST"])
 def remove_draft_amendment():
-    data = request.get_json()
+    data = _json_body()
     amendmentId = data.get("id")
     sessionUserData = session.get("user")
     if(User.validateUser(sessionUserData)):
@@ -263,12 +268,12 @@ def remove_draft_amendment():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't remove draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't remove draft policy. No user logged in."}), 401
         
         
 @app.route("/submit-draft-amendment", methods=["POST"])
 def submit_draft_amendment():
-    data = request.get_json()
+    data = _json_body()
     amendmentId = data.get("id")
     sessionUserData = session.get("user")
     if(User.validateUser(sessionUserData)):
@@ -278,7 +283,7 @@ def submit_draft_amendment():
         else:
             return jsonify({"success": False, "error": "Server error! Something smells like fish..."}), 500
     else:
-        return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 500
+        return jsonify({"success": False, "error": "Can't submit draft policy. No user logged in."}), 401
 
 
 def _isOperator(sessionUserData):
@@ -307,7 +312,7 @@ OPERATOR_DENIED = "This account is not authorized for operator actions."
 
 @app.route("/submit-ballot", methods=["POST"])
 def submit_ballot():
-    data = request.get_json()
+    data = _json_body()
     currentWindowId = Database.getCurrentVotingWindowId()
     windowId = data.get("windowId") or currentWindowId
     # Window gating (MetaPolicy integrity): ballots may only be cast into the
@@ -372,7 +377,7 @@ def close_window():
     Visible to any logged-in user in v1 for operator flexibility during early use.
     Later can be restricted.
     """
-    data = request.get_json() or {}
+    data = _json_body()
     windowId = data.get("windowId") or Database.getCurrentVotingWindowId()
     sessionUserData = session.get("user")
 
@@ -421,7 +426,7 @@ def dev_tools_seed():
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     if not _isOperator(sessionUserData):
         return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
-    data = request.get_json() or {}
+    data = _json_body()
     window = data.get("window") or Database.getCurrentVotingWindowId()
 
     # New precise mode (preferred for the user's test needs)
@@ -456,7 +461,7 @@ def dev_tools_clear():
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     if not _isOperator(sessionUserData):
         return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
-    data = request.get_json() or {}
+    data = _json_body()
     window = data.get("window")
     if not window:
         return jsonify({"success": False, "error": "window required"}), 400
@@ -475,7 +480,7 @@ def dev_tools_promote():
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     if not _isOperator(sessionUserData):
         return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
-    data = request.get_json() or {}
+    data = _json_body()
     window = data.get("window") or Database.getCurrentVotingWindowId()
     res = Database.promoteWinnersFromWindow(window)
     return jsonify(res)
@@ -489,7 +494,7 @@ def dev_tools_reset_user():
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     if not _isOperator(sessionUserData):
         return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
-    data = request.get_json() or {}
+    data = _json_body()
     window = data.get("window")
     user_id = data.get("user_id") or data.get("uid")
     if not window or not user_id:
@@ -509,7 +514,7 @@ def dev_tools_set_window():
         return jsonify({"success": False, "error": "You must be logged in to perform dev/operator actions."}), 401
     if not _isOperator(sessionUserData):
         return jsonify({"success": False, "error": OPERATOR_DENIED}), 403
-    data = request.get_json() or {}
+    data = _json_body()
     window = data.get("window") or data.get("windowId")
     # empty / null / "clear" clears the override
     res = Database.setCurrentVotingWindowOverride(window if window and str(window).strip() else None)

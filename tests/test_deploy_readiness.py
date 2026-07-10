@@ -104,6 +104,27 @@ def test_validate_token_missing_body_is_401_not_500(client):
     assert r3.status_code == 401
 
 
+def test_api_posts_empty_body_return_json_not_html_400(client):
+    """Empty JSON bodies must not become Werkzeug HTML 400 pages for API clients."""
+    for path in (
+        "/submit-ballot",
+        "/close-window",
+        "/create-draft",
+        "/dev-tools/set-window",
+    ):
+        r = client.post(path, data=b"", content_type="application/json")
+        assert r.status_code != 500, path
+        # Prefer JSON; never the default Flask HTML error shell
+        assert b"<!doctype html>" not in r.data.lower(), f"{path} returned HTML: {r.status_code}"
+        # Unauthenticated or validation — but structured
+        if r.is_json:
+            body = r.get_json()
+            assert isinstance(body, dict)
+        else:
+            # Should be json content-type for our jsonify responses
+            assert "json" in (r.content_type or ""), f"{path} ct={r.content_type} code={r.status_code}"
+
+
 def test_stable_secret_key_is_deterministic():
     """Multi-worker gunicorn requires an identical secret across processes."""
     from PlotterApp import _stable_secret_key
