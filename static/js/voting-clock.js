@@ -3,8 +3,15 @@
  * Mount: any element with data-voting-clock (optional data-compact="1").
  * Seeds from data-ends-at / data-server-now / data-window-id attributes, or
  * fetches /voting-clock once if ends-at is missing.
+ *
+ * Real-world ticks: 1s local countdown, resync with /voting-clock every 60s,
+ * and a single auto-reload when the window boundary is crossed so the new
+ * ISO week (ballot + window id) appears without a manual refresh.
  */
 (function () {
+  var RESYNC_MS = 60000;
+  var RELOAD_KEY = "ip_vc_reloaded_for";
+
   function pad(n) {
     return String(n).padStart(2, "0");
   }
@@ -23,34 +30,88 @@
 
   function parseIso(iso) {
     if (!iso) return null;
-    // Accept trailing Z
     var t = Date.parse(iso);
     return isNaN(t) ? null : t;
   }
 
+  function maybeReloadForNewWeek(windowId, endsAtMs, nowApprox) {
+    if (endsAtMs == null || nowApprox < endsAtMs) return;
+    var key = windowId + "|" + endsAtMs;
+    try {
+      if (sessionStorage.getItem(RELOAD_KEY) === key) return;
+      sessionStorage.setItem(RELOAD_KEY, key);
+    } catch (e) {
+      /* private mode — still try one reload */
+    }
+    // Brief message paint before navigation
+    setTimeout(function () {
+      window.location.reload();
+    }, 800);
+  }
+
   function mountEl(el, clock) {
-    var endsAtMs = parseIso(clock.endsAt || el.getAttribute("data-ends-at"));
-    var serverNowMs = parseIso(clock.serverNow || el.getAttribute("data-server-now")) || Date.now();
-    var skew = serverNowMs - Date.now(); // server - client
-    var windowId = clock.windowId || el.getAttribute("data-window-id") || "";
-    var nextId = clock.nextWindowId || el.getAttribute("data-next-window") || "";
-    var isOverride = !!(clock.isOverride || el.getAttribute("data-override") === "1");
-    var phase = clock.phase || "";
+    var state = {
+      endsAtMs: parseIso(clock.endsAt || el.getAttribute("data-ends-at")),
+      serverNowMs: parseIso(clock.serverNow || el.getAttribute("data-server-now")) || Date.now(),
+      windowId: clock.windowId || el.getAttribute("data-window-id") || "",
+      nextId: clock.nextWindowId || el.getAttribute("data-next-window") || "",
+      isOverride: !!(clock.isOverride || el.getAttribute("data-override") === "1"),
+      phase: clock.phase || "",
+      secondsToRealWeekEnd:
+        clock.secondsToRealWeekEnd != null
+          ? clock.secondsToRealWeekEnd
+          : el.getAttribute("data-seconds-real-end")
+            ? parseInt(el.getAttribute("data-seconds-real-end"), 10)
+            : null,
+    };
+    state.skew = state.serverNowMs - Date.now();
     var compact = el.getAttribute("data-compact") === "1";
+    var sawOpen = false;
+
+    function applyClock(clockIn) {
+      if (!clockIn) return;
+      state.endsAtMs = parseIso(clockIn.endsAt) != null ? parseIso(clockIn.endsAt) : state.endsAtMs;
+      state.serverNowMs = parseIso(clockIn.serverNow) || Date.now();
+      state.skew = state.serverNowMs - Date.now();
+      if (clockIn.windowId) state.windowId = clockIn.windowId;
+      if (clockIn.nextWindowId) state.nextId = clockIn.nextWindowId;
+      if (typeof clockIn.isOverride === "boolean") state.isOverride = clockIn.isOverride;
+      if (clockIn.phase) state.phase = clockIn.phase;
+      if (clockIn.secondsToRealWeekEnd != null) {
+        state.secondsToRealWeekEnd = clockIn.secondsToRealWeekEnd;
+      }
+      // Keep data-* attributes in sync for other scripts (vote.js window id)
+      if (state.windowId) el.setAttribute("data-window-id", state.windowId);
+      if (clockIn.endsAt) el.setAttribute("data-ends-at", clockIn.endsAt);
+      if (clockIn.nextWindowId) el.setAttribute("data-next-window", clockIn.nextWindowId);
+    }
 
     function tick() {
-      var nowApprox = Date.now() + skew;
-      var remaining = endsAtMs != null ? Math.max(0, Math.floor((endsAtMs - nowApprox) / 1000)) : null;
-      var ended = remaining === 0 && endsAtMs != null;
+      var nowApprox = Date.now() + state.skew;
+      var remaining =
+        state.endsAtMs != null ? Math.max(0, Math.floor((state.endsAtMs - nowApprox) / 1000)) : null;
+      var ended = remaining === 0 && state.endsAtMs != null;
+
+      if (!ended) sawOpen = true;
 
       var main;
-      if (isOverride && !endsAtMs) {
-        main = "Operator window " + windowId + " (calendar week still ticks)";
-        if (clock.secondsToRealWeekEnd != null) {
-          main += " · real week ends in " + formatRemaining(clock.secondsToRealWeekEnd);
+      if (state.isOverride && !state.endsAtMs) {
+        main = "Operator window " + state.windowId + " (calendar week still ticks)";
+        if (state.secondsToRealWeekEnd != null) {
+          // Approximate remaining real week from last sync
+          var realLeft = state.secondsToRealWeekEnd - Math.floor((Date.now() + state.skew - state.serverNowMs) / 1000);
+          main += " · real week ends in " + formatRemaining(Math.max(0, realLeft));
         }
       } else if (ended) {
-        main = "Window " + windowId + " has ended · next: " + (nextId || "—");
+        main =
+          "Window " +
+          state.windowId +
+          " ended · loading " +
+          (state.nextId || "next week") +
+          "…";
+        if (sawOpen) {
+          maybeReloadForNewWeek(state.windowId, state.endsAtMs, nowApprox);
+        }
       } else {
         main = compact
           ? formatRemaining(remaining)
@@ -61,11 +122,11 @@
       if (!compact) {
         detail =
           "Window <strong>" +
-          (windowId || "—") +
+          (state.windowId || "—") +
           "</strong> · UTC · next <strong>" +
-          (nextId || "—") +
+          (state.nextId || "—") +
           "</strong>";
-        if (isOverride) detail += " · <em>override active</em>";
+        if (state.isOverride) detail += " · <em>override active</em>";
       }
 
       el.innerHTML =
@@ -74,13 +135,40 @@
         "</span>" +
         (detail ? '<span class="vc-detail">' + detail + "</span>" : "");
       el.setAttribute("data-seconds-remaining", remaining != null ? String(remaining) : "");
-      el.setAttribute("data-phase", ended ? "ended" : phase || "open");
+      el.setAttribute("data-phase", ended ? "ended" : state.phase || "open");
+    }
+
+    function resync() {
+      fetch("/voting-clock", {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (clockIn) {
+          applyClock(clockIn);
+          tick();
+        })
+        .catch(function () {
+          /* keep ticking from last known endsAt */
+        });
     }
 
     tick();
-    // Clear previous interval if remounted
     if (el._vcTimer) clearInterval(el._vcTimer);
+    if (el._vcResync) clearInterval(el._vcResync);
     el._vcTimer = setInterval(tick, 1000);
+    el._vcResync = setInterval(resync, RESYNC_MS);
+
+    // Resync when tab becomes visible again (laptop sleep / background tab)
+    if (!el._vcVisBound) {
+      el._vcVisBound = true;
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") resync();
+      });
+    }
   }
 
   function bootOne(el) {
@@ -99,8 +187,11 @@
       });
       return;
     }
-    // Fetch live clock
-    fetch("/voting-clock", { credentials: "same-origin" })
+    fetch("/voting-clock", {
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    })
       .then(function (r) {
         return r.json();
       })

@@ -50,14 +50,26 @@ app.secret_key = _stable_secret_key()
 def healthz():
     """Lightweight health endpoint for Render health checks / uptime monitors.
     Shallow by default (no RTDB roundtrip per ping); pass ?deep=1 to also
-    verify database connectivity."""
+    verify database connectivity and report the live voting window clock."""
     if request.args.get("deep"):
         try:
             from firebase_admin import db as _db
             _db.reference("meta").get(shallow=True)
         except Exception as e:
             return jsonify({"status": "degraded", "database": str(e)}), 503
-        return jsonify({"status": "ok", "database": "ok"})
+        try:
+            clock = Database.getVotingClock()
+        except Exception as e:
+            return jsonify({"status": "ok", "database": "ok", "clock_error": str(e)})
+        return jsonify({
+            "status": "ok",
+            "database": "ok",
+            "windowId": clock.get("windowId"),
+            "realWindowId": clock.get("realWindowId"),
+            "secondsRemaining": clock.get("secondsRemaining"),
+            "endsAt": clock.get("endsAt"),
+            "isOverride": clock.get("isOverride"),
+        })
     return jsonify({"status": "ok"})
 
 @app.route('/validate-token', methods=['POST'])
@@ -332,20 +344,26 @@ def ballot_items():
         + [{"key": f"amendment-{a.getId()}", "kind": "amendment", "id": a.getId(), "title": a.getTitle()} for a in amendments]
     )
     clock = Database.getVotingClock()
-    return jsonify({
+    resp = jsonify({
         "windowId": windowId,
         "items": items,
         "count": len(items),
         "clock": clock,
     })
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp
 
 
 @app.route("/voting-clock", methods=["GET"])
 def voting_clock():
     """Public real-world voting clock (ISO week bounds + countdown fields).
     Client timers tick from endsAt / serverNow so the site feels live without
-    reloading. Respects operator window override when set."""
-    return jsonify(Database.getVotingClock())
+    reloading. Respects operator window override when set.
+    no-store: never cache a countdown past the real second it was true."""
+    resp = jsonify(Database.getVotingClock())
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 
 @app.route("/close-window", methods=["POST"])

@@ -106,12 +106,33 @@ def test_voting_clock_http_endpoint(client):
     assert body["timezone"] == "UTC"
     assert isinstance(body["secondsRemaining"], int)
     assert body["secondsRemaining"] >= 0
+    # Never cache live ticks
+    cc = r.headers.get("Cache-Control", "")
+    assert "no-store" in cc
     # Either real ISO endsAt or override with null endsAt
     if body.get("isOverride") and body.get("phase") == "override":
         assert body.get("endsAt") is None
     else:
         assert body.get("endsAt")
         assert "T" in body["endsAt"]
+
+
+def test_voting_clock_js_resyncs_and_reloads_on_boundary():
+    js = (REPO_ROOT / "static" / "js" / "voting-clock.js").read_text()
+    assert "RESYNC_MS" in js
+    assert "maybeReloadForNewWeek" in js
+    assert "visibilitychange" in js
+    assert "cache: \"no-store\"" in js or "cache: 'no-store'" in js
+
+
+def test_healthz_deep_includes_window_clock(client):
+    r = client.get("/healthz?deep=1")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body.get("status") == "ok"
+    assert body.get("database") == "ok"
+    assert "windowId" in body
+    assert "secondsRemaining" in body
 
 
 def test_ballot_items_includes_clock(client):
