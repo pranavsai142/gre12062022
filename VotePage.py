@@ -48,6 +48,7 @@ def render(user):
     userAlreadyVoted = bool(ballot and ballot.userChoices) if ballot else False
     tallies = Database.getWindowTallies(windowId) if hasLiveBallot else {}
     participation = Database.getWindowParticipationCount(windowId)
+    clock = Database.getVotingClock()
 
     return render_template_string('''
         <!doctype html>
@@ -194,6 +195,28 @@ def render(user):
                 text-align: center;
                 border-radius: 8px;
             }
+            .voting-clock {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 10px 18px;
+                background: #fff7ed;
+                border: 1px solid #ffcc99;
+                border-left: 6px solid #ff6600;
+                padding: 12px 16px;
+                margin-bottom: 18px;
+                border-radius: 6px;
+            }
+            .voting-clock .vc-countdown {
+                font-size: 1.15em;
+                font-weight: 700;
+                color: #cc5200;
+                font-variant-numeric: tabular-nums;
+            }
+            .voting-clock .vc-detail {
+                font-size: 0.92em;
+                color: #555;
+            }
             .notice {
                 background: #e8f4e8;
                 border-left: 5px solid #0a7;
@@ -265,10 +288,22 @@ def render(user):
             <div class="content">
                 <h2>Vote — Window {{ windowId }}</h2>
 
+                <div class="voting-clock"
+                     data-voting-clock
+                     data-window-id="{{ clock.windowId }}"
+                     data-next-window="{{ clock.nextWindowId }}"
+                     data-ends-at="{{ clock.endsAt or '' }}"
+                     data-server-now="{{ clock.serverNow }}"
+                     data-override="{{ '1' if clock.isOverride else '0' }}"
+                     data-phase="{{ clock.phase }}"
+                     data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
+                    <span class="vc-countdown">Loading clock…</span>
+                </div>
+
                 <div class="ballot-header">
                     <p><strong>The Internet Party holds regular votes on candidate policies and amendments.</strong></p>
                     <p>Per our MetaPolicies: any registered member may vote once per weekly window. Policies that receive a majority of votes cast are promoted to the official platform.</p>
-                    <p><small>Current window: <strong>{{ windowId }}</strong> &nbsp;•&nbsp; Participation so far: <strong>{{ participation }}</strong> members</small></p>
+                    <p><small>Current window: <strong>{{ windowId }}</strong> &nbsp;•&nbsp; Participation so far: <strong>{{ participation }}</strong> members &nbsp;•&nbsp; Weeks run <strong>Monday 00:00 UTC → next Monday</strong> (live countdown above)</small></p>
                 </div>
 
                 {% if not hasLiveBallot %}
@@ -369,6 +404,7 @@ def render(user):
             </div>
 
             <script src="{{ url_for('static', filename='js/vote.js') }}"></script>
+            <script src="{{ url_for('static', filename='js/voting-clock.js') }}"></script>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
@@ -382,4 +418,5 @@ def render(user):
          userCanVoteNow=userCanVoteNow,
          userAlreadyVoted=userAlreadyVoted,
          tallies=tallies,
-         participation=participation)
+         participation=participation,
+         clock=clock)

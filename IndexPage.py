@@ -13,11 +13,21 @@ def render(user):
         ballot_p, ballot_a = Database.getBallotItems()
         part = Database.getWindowParticipationCount(window)
         has_ballot = len(ballot_p) + len(ballot_a) > 0
+        clock = Database.getVotingClock()
     except Exception:
         window = "2026-W21"
         pol_sum = {"draft": 2, "canidate": 5, "official": 1}
         has_ballot = True
         part = 1
+        clock = {
+            "windowId": window,
+            "nextWindowId": "—",
+            "isOverride": False,
+            "phase": "open",
+            "serverNow": "",
+            "endsAt": "",
+            "secondsToRealWeekEnd": 0,
+        }
 
     return render_template_string('''
         <!doctype html>
@@ -138,6 +148,28 @@ def render(user):
                 padding: 14px 18px;
                 margin: 16px 0;
             }
+            .voting-clock {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 8px 16px;
+                background: #fff7ed;
+                border: 1px solid #ffcc99;
+                border-left: 6px solid #ff6600;
+                padding: 12px 16px;
+                margin: 0 0 20px;
+                border-radius: 6px;
+            }
+            .voting-clock .vc-countdown {
+                font-size: 1.1em;
+                font-weight: 700;
+                color: #cc5200;
+                font-variant-numeric: tabular-nums;
+            }
+            .voting-clock .vc-detail {
+                font-size: 0.9em;
+                color: #555;
+            }
 
             /* Mobile-first responsive overrides — desktop appearance unchanged */
             @media (max-width: 768px) {
@@ -232,10 +264,22 @@ def render(user):
                     </div>
                 </div>
 
+                <div class="voting-clock"
+                     data-voting-clock
+                     data-window-id="{{ clock.windowId }}"
+                     data-next-window="{{ clock.nextWindowId }}"
+                     data-ends-at="{{ clock.endsAt or '' }}"
+                     data-server-now="{{ clock.serverNow }}"
+                     data-override="{{ '1' if clock.isOverride else '0' }}"
+                     data-phase="{{ clock.phase }}"
+                     data-seconds-real-end="{{ clock.secondsToRealWeekEnd }}">
+                    <span class="vc-countdown">Loading clock…</span>
+                </div>
+
                 {% if has_ballot %}
                 <div class="section">
                     <div class="notice">
-                        <strong>Active weekly ballot open now.</strong> 
+                        <strong>Active weekly ballot open now.</strong>
                         <a href="{{ url_for('vote') }}">Cast your vote for Window {{ window }} →</a>
                     </div>
                 </div>
@@ -260,9 +304,10 @@ def render(user):
                 </div>
             </div>
 
+            <script src="{{ url_for('static', filename='js/voting-clock.js') }}"></script>
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>
             </footer>
         </body>
-    ''', user=user, window=window, pol_sum=pol_sum, part=part, has_ballot=has_ballot)
+    ''', user=user, window=window, pol_sum=pol_sum, part=part, has_ballot=has_ballot, clock=clock)

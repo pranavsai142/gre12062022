@@ -1,6 +1,7 @@
 from firebase_admin import db
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import random
+import re
 import uuid
 
 from Policy import Policy
@@ -12,12 +13,82 @@ import User
 # ============================================================================
 # VOTING WINDOW HELPERS (per MetaPolicies + exact dev notes priority)
 # Window = current ISO week (e.g. "2026-W17"). One immutable ballot per user per window.
-# MVP: always "open" when candidate items exist. Future: strict Sunday window gating.
+# Real-world clock: ISO weeks run Monday 00:00:00 UTC → next Monday 00:00:00 UTC.
+# MVP: voting is open whenever candidate items exist; the clock still ticks live so
+# members see when the current window ends and the next one begins.
 # ============================================================================
 
 VOTE_YES = "yes"      # Promote / approve for official platform
 VOTE_NO = "no"
 VOTE_ABSTAIN = "abstain"
+
+# ISO week id pattern: 2026-W28
+_ISO_WINDOW_RE = re.compile(r"^(\d{4})-W(\d{2})$")
+
+
+def _utcnow():
+    """Timezone-aware UTC now (single place so tests can monkeypatch if needed)."""
+    return datetime.now(timezone.utc)
+
+
+def getRealIsoWindowId(now=None):
+    """Calendar ISO week id for `now` (UTC), ignoring any operator override."""
+    now = now or _utcnow()
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    year, week, _ = now.isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def parseIsoWindowId(window_id):
+    """Parse 'YYYY-Www' → (year, week) or None if not a real ISO window id."""
+    if not window_id or not isinstance(window_id, str):
+        return None
+    m = _ISO_WINDOW_RE.match(window_id.strip())
+    if not m:
+        return None
+    year, week = int(m.group(1)), int(m.group(2))
+    if week < 1 or week > 53:
+        return None
+    return year, week
+
+
+def getWindowTimeBounds(window_id):
+    """Return (start_utc, end_utc) for an ISO window id, or None if not parseable.
+
+    Bounds are half-open: [Monday 00:00:00 UTC, next Monday 00:00:00 UTC).
+    """
+    parsed = parseIsoWindowId(window_id)
+    if not parsed:
+        return None
+    year, week = parsed
+    # datetime.fromisocalendar exists on 3.8+
+    start = datetime.fromisocalendar(year, week, 1).replace(tzinfo=timezone.utc)
+    end = start + timedelta(days=7)
+    return start, end
+
+
+def getNextIsoWindowId(window_id=None, now=None):
+    """ISO week id that follows `window_id`, or the week after the real current week."""
+    if window_id:
+        bounds = getWindowTimeBounds(window_id)
+        if bounds:
+            _, end = bounds
+            return getRealIsoWindowId(end)
+    now = now or _utcnow()
+    return getRealIsoWindowId((now if now.tzinfo else now.replace(tzinfo=timezone.utc)) + timedelta(days=7))
+
+
+def getCurrentWindowOverride():
+    """Raw operator override string, or None when using the real ISO week."""
+    try:
+        override = db.reference("meta/currentWindowOverride").get()
+        if override and isinstance(override, str) and override.strip():
+            return override.strip()
+    except Exception:
+        pass
+    return None
+
 
 def getCurrentVotingWindowId():
     """Returns the effective current voting window.
@@ -25,17 +96,10 @@ def getCurrentVotingWindowId():
     that value is returned instead of the real ISO week. This powers targeted
     testing (empty ballots, historical windows, etc.).
     """
-    # Operator override takes precedence (stored in meta/ for simplicity)
-    try:
-        override = db.reference("meta/currentWindowOverride").get()
-        if override and isinstance(override, str) and override.strip():
-            return override.strip()
-    except Exception:
-        pass  # fall back to real week if Firebase not ready or permission issue
-
-    now = datetime.now()
-    year, week, _ = now.isocalendar()
-    return f"{year}-W{week:02d}"
+    override = getCurrentWindowOverride()
+    if override:
+        return override
+    return getRealIsoWindowId()
 
 def setCurrentVotingWindowOverride(windowId):
     """Store (or clear) a manual override for the current voting window.
@@ -52,10 +116,71 @@ def setCurrentVotingWindowOverride(windowId):
 
 def isVotingOpen(window_id=None):
     """MVP: always True when there are candidate items (the ballot exists).
-    In production this will check Sunday 00:00–23:59 UTC etc. per the original notes.
+    The live voting clock still reports real ISO week boundaries so the UI can
+    show countdowns; stricter Sunday-only gating can plug in here later.
     """
-    # For the initial website fill-out we treat any week with candidates as an active voting event.
     return True
+
+
+def getVotingClock(now=None):
+    """Real-world voting clock for the effective window + calendar context.
+
+    Returned dict (JSON-serializable) powers countdowns on /vote, home, and
+    the public /voting-clock endpoint. All timestamps are ISO-8601 UTC.
+    """
+    now = now or _utcnow()
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+
+    real_window = getRealIsoWindowId(now)
+    override = getCurrentWindowOverride()
+    effective = override or real_window
+    is_override = bool(override)
+
+    real_bounds = getWindowTimeBounds(real_window)
+    real_start, real_end = real_bounds
+    seconds_to_real_end = max(0, int((real_end - now).total_seconds()))
+    next_real = getRealIsoWindowId(real_end)
+
+    # When effective is a real ISO week (including override of a real week id),
+    # use those bounds for the primary countdown; synthetic SCALE/TEST windows
+    # fall back to the real calendar countdown for "next real week".
+    eff_bounds = getWindowTimeBounds(effective)
+    if eff_bounds:
+        eff_start, eff_end = eff_bounds
+        seconds_remaining = max(0, int((eff_end - now).total_seconds()))
+        next_window = getRealIsoWindowId(eff_end)
+        phase = "open" if now < eff_end else "ended"
+        starts_at = eff_start.isoformat().replace("+00:00", "Z")
+        ends_at = eff_end.isoformat().replace("+00:00", "Z")
+    else:
+        seconds_remaining = seconds_to_real_end
+        next_window = next_real
+        phase = "override"
+        starts_at = None
+        ends_at = None
+
+    return {
+        "windowId": effective,
+        "realWindowId": real_window,
+        "nextWindowId": next_window,
+        "isOverride": is_override,
+        "isOpen": isVotingOpen(effective),
+        "phase": phase,
+        "timezone": "UTC",
+        "serverNow": now.isoformat().replace("+00:00", "Z"),
+        "startsAt": starts_at,
+        "endsAt": ends_at,
+        "secondsRemaining": seconds_remaining,
+        "realWeekStartsAt": real_start.isoformat().replace("+00:00", "Z"),
+        "realWeekEndsAt": real_end.isoformat().replace("+00:00", "Z"),
+        "secondsToRealWeekEnd": seconds_to_real_end,
+        "label": (
+            f"Operator override: {effective}"
+            if is_override and not eff_bounds
+            else f"Weekly window {effective}"
+        ),
+    }
     
     
 # Get a singluar policy functions

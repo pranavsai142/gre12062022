@@ -16,7 +16,8 @@ from npc.scenarios import run_full_cycle
 def test_full_governance_cycle_small(base_url: str, test_window_id):
     metrics = run_full_cycle(
         base_url=base_url,
-        window_id=f"E2E-{test_window_id}",
+        # test_window_id is already E2E-TEST-* (see conftest); do not double-prefix
+        window_id=test_window_id,
         n_drafters=2,
         n_voters=5,
         concurrency=5,

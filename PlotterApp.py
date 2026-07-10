@@ -331,7 +331,21 @@ def ballot_items():
         [{"key": f"policy-{p.getId()}", "kind": "policy", "id": p.getId(), "title": p.getTitle()} for p in policies]
         + [{"key": f"amendment-{a.getId()}", "kind": "amendment", "id": a.getId(), "title": a.getTitle()} for a in amendments]
     )
-    return jsonify({"windowId": windowId, "items": items, "count": len(items)})
+    clock = Database.getVotingClock()
+    return jsonify({
+        "windowId": windowId,
+        "items": items,
+        "count": len(items),
+        "clock": clock,
+    })
+
+
+@app.route("/voting-clock", methods=["GET"])
+def voting_clock():
+    """Public real-world voting clock (ISO week bounds + countdown fields).
+    Client timers tick from endsAt / serverNow so the site feels live without
+    reloading. Respects operator window override when set."""
+    return jsonify(Database.getVotingClock())
 
 
 @app.route("/close-window", methods=["POST"])
