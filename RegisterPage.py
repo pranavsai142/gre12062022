@@ -158,6 +158,27 @@ def render(user):
                 margin-bottom: 10px;
             }
 
+
+            .voting-clock {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: baseline;
+                gap: 8px 14px;
+                background: #fff7ed;
+                border: 1px solid #ffcc99;
+                border-left: 6px solid #ff6600;
+                padding: 10px 14px;
+                margin: 0 0 14px;
+                border-radius: 6px;
+                font-size: 0.95em;
+            }
+            .voting-clock .vc-countdown {
+                font-weight: 700;
+                color: #cc5200;
+                font-variant-numeric: tabular-nums;
+            }
+            .voting-clock .vc-detail { color: #555; font-size: 0.9em; }
+
             /* Mobile auth forms/cards */
             @media (max-width: 768px) {
                 body { font-size: 16px; }
@@ -215,6 +236,11 @@ def render(user):
             </div>
 
             <div class="content">
+
+                <div class="voting-clock" data-voting-clock data-compact="1">
+                    <span class="vc-countdown">Loading voting clock…</span>
+                </div>
+
                 <div class="auth-header">
                     <h2>Create Your Account</h2>
                     <div style="font-size:0.9em;color:#666;">Join the movement. Propose, amend, and vote on the platform that represents you.</div>
@@ -244,6 +270,9 @@ def render(user):
             </div>
 
             <script src="{{ url_for('static', filename='js/register.js') }}"></script>
+
+            <script src="{{ url_for('static', filename='js/voting-clock.js') }}"></script>
+
             <footer>
                 <p class="footer-text">Brought to you by <a href="{{ url_for('index') }}"><span>The Internet Party</span></a></p>
                 <p class="footer-text">Powered by <span>Grok</span></p>

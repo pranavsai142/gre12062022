@@ -76,6 +76,18 @@ def test_sitemap_xml_lists_public_pages(client):
     assert "urlset" in body
     for path in ("/vote", "/policy", "/about"):
         assert path in body
+
+
+def test_public_status_includes_live_window(client):
+    r = client.get("/status")
+    assert r.status_code in (200, 503)
+    body = r.get_json()
+    assert body.get("service") == "the-internet-party"
+    assert "windowId" in body or "clock_error" in body
+    if body.get("status") == "ok":
+        assert body.get("database") == "ok"
+        assert isinstance(body.get("secondsRemaining"), int)
+        assert "no-store" in r.headers.get("Cache-Control", "")
 def test_ballot_items_is_json_shape(client):
     """NPC/remote clients rely on /ballot-items JSON (not HTML scrape)."""
     r = client.get("/ballot-items")

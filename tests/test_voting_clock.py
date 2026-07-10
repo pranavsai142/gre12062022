@@ -179,3 +179,12 @@ def test_about_documents_real_world_windows(client):
     html = r.data.decode("utf-8")
     assert "ISO week" in html or "Monday 00:00 UTC" in html
     assert "/voting-clock" in html
+
+
+def test_login_and_register_embed_compact_clock(client):
+    for path in ("/login", "/register"):
+        r = client.get(path)
+        assert r.status_code == 200, path
+        html = r.data.decode("utf-8")
+        assert "data-voting-clock" in html, path
+        assert "voting-clock.js" in html, path

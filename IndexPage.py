@@ -33,6 +33,11 @@ def render(user):
         <!doctype html>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>The Internet Party — Truth • Freedom • Health</title>
+        <meta name="description" content="Party No. 3 — weekly direct democracy on a living platform. Real ISO-week voting windows (UTC), public ballots, and majority rules.">
+        <meta property="og:title" content="The Internet Party — Truth • Freedom • Health">
+        <meta property="og:description" content="Parallel internet democracy. Draft policy, vote every week, watch the live countdown to the next window.">
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://theinternetparty.us/">
         <style>
             body {
                 font-family: Arial, sans-serif;

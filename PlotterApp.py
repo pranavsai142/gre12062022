@@ -371,6 +371,38 @@ def voting_clock():
     return resp
 
 
+@app.route("/status", methods=["GET"])
+def public_status():
+    """Public ops/status JSON: health + live voting window in one call.
+    Useful for monitors and for proving the platform is on real calendar time."""
+    payload = {"status": "ok", "service": "the-internet-party"}
+    try:
+        from firebase_admin import db as _db
+        _db.reference("meta").get(shallow=True)
+        payload["database"] = "ok"
+    except Exception as e:
+        payload["status"] = "degraded"
+        payload["database"] = str(e)
+    try:
+        clock = Database.getVotingClock()
+        payload["windowId"] = clock.get("windowId")
+        payload["realWindowId"] = clock.get("realWindowId")
+        payload["nextWindowId"] = clock.get("nextWindowId")
+        payload["endsAt"] = clock.get("endsAt")
+        payload["secondsRemaining"] = clock.get("secondsRemaining")
+        payload["isOverride"] = clock.get("isOverride")
+        payload["serverNow"] = clock.get("serverNow")
+        payload["timezone"] = clock.get("timezone", "UTC")
+    except Exception as e:
+        payload["clock_error"] = str(e)
+        if payload.get("status") == "ok":
+            payload["status"] = "degraded"
+    code = 200 if payload.get("status") == "ok" else 503
+    resp = jsonify(payload)
+    resp.headers["Cache-Control"] = "no-store, max-age=0"
+    return resp, code
+
+
 @app.route("/close-window", methods=["POST"])
 def close_window():
     """Manual tabulate + promote for the current (or specified) window.
@@ -544,7 +576,7 @@ def robots_txt():
 def sitemap_xml():
     """Minimal public sitemap for the live civic surface (real calendar site)."""
     base = "https://theinternetparty.us"
-    paths = ["/", "/vote", "/policy", "/about", "/login", "/register"]
+    paths = ["/", "/vote", "/policy", "/about", "/login", "/register", "/status"]
     urls = "\n".join(
         f"  <url><loc>{base}{p}</loc><changefreq>daily</changefreq></url>"
         for p in paths
