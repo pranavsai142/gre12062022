@@ -74,20 +74,20 @@ Depth and exploration *questions* (not tickets): see `SOCIETAL_GIVE_UP_INVESTIGA
 
 ## Current state (for /init)
 
-- **Status:** Project **abandoned / fully given up**. Public site is a shut-down notice; writes are discontinued.
-- **Drivers:** `SOUL_DRIVER.md` and `DEV_NOTES.md` already state abandonment.
+- **Status:** Mission **abandoned**; **software retained as a demo** behind a **forced `/disclaimer`** (all revelation checkboxes). After accept: full site works + sticky banner. Hard tombstone only if `PRODUCT_DISCONTINUED=1`.
+- **Drivers:** `SOUL_DRIVER.md` / `DEV_NOTES.md` — abandoned mission, demo retained.
 - **Archive:** `notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md` is the durable “why.”
-- **This handoff:** the durable “what we learned / we stop here.”
+- **This handoff:** the durable “what we learned / we stop claiming power.”
 
 ---
 
 ## For the next session
 
-**There is no feature backlog and no work to continue for Party No. 3.**
+**There is no feature backlog to “grow Party No. 3 as a real national party.”** The demo may be inspected and polished as *honest theater with a gate*, not as sovereignty.
 
-1. Run `/init` → report **discontinued**, not “ready to implement voting features.”
+1. Run `/init` → report **mission given up; demo behind forced disclaimer**.
 2. Read this handoff + `SOCIETAL_GIVE_UP_INVESTIGATION.md` if context is needed.
-3. **Do not** invent a coding plan to revive the party, improve ballots, or train agents for Party No. 3 at scale.
+3. **Do not** invent a coding plan to revive the party as real power, or train agents for Party No. 3 at scale.
 4. If the human starts a *different* project, that needs a **new** soul — not this one.
 
 Closing line to keep:  
