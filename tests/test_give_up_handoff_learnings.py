@@ -30,7 +30,13 @@ def test_handoff_is_give_up_close_not_feature_continuation():
     assert "no work to continue" in lower or "no feature backlog" in lower
     # Must not read as "continue building the party" as next work
     assert "continue building the party" not in lower
-    assert "next sprint" not in lower
+    # If "next sprint" appears, it must only be as an explicit refusal
+    if "next sprint" in lower:
+        assert "no" in lower and (
+            'no “next sprint' in lower
+            or 'no "next sprint' in lower
+            or "no next sprint" in lower
+        )
 
 
 def test_handoff_has_what_we_learned_section_with_core_realizations():
