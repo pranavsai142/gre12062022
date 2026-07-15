@@ -106,24 +106,11 @@ def client():
 
 
 def test_voting_clock_http_endpoint(client):
+    """Give-up: public /voting-clock is Gone (no live ticks)."""
     r = client.get("/voting-clock")
-    assert r.status_code == 200
+    assert r.status_code == 410
     body = r.get_json()
-    assert "windowId" in body
-    assert "serverNow" in body
-    assert "secondsRemaining" in body
-    assert body["timezone"] == "UTC"
-    assert isinstance(body["secondsRemaining"], int)
-    assert body["secondsRemaining"] >= 0
-    # Never cache live ticks
-    cc = r.headers.get("Cache-Control", "")
-    assert "no-store" in cc
-    # Either real ISO endsAt or override with null endsAt
-    if body.get("isOverride") and body.get("phase") == "override":
-        assert body.get("endsAt") is None
-    else:
-        assert body.get("endsAt")
-        assert "T" in body["endsAt"]
+    assert body.get("discontinued") is True
 
 
 def test_voting_clock_js_resyncs_and_reloads_on_boundary():
@@ -136,39 +123,29 @@ def test_voting_clock_js_resyncs_and_reloads_on_boundary():
 
 
 def test_healthz_deep_includes_window_clock(client):
+    """Give-up: deep health reports discontinued (no live window clock feed)."""
     r = client.get("/healthz?deep=1")
     assert r.status_code == 200
     body = r.get_json()
-    assert body.get("status") == "ok"
-    assert body.get("database") == "ok"
-    assert "windowId" in body
-    assert "secondsRemaining" in body
-    assert body.get("remainingLabel")
+    assert body.get("status") == "discontinued"
+    assert body.get("discontinued") is True
     assert body.get("revision")
 
 
 def test_ballot_items_includes_clock(client):
+    """Give-up: ballot API is discontinued (legacy clock embedding retired with product)."""
     r = client.get("/ballot-items")
-    assert r.status_code == 200
-    body = r.get_json()
-    assert "clock" in body
-    assert body["clock"]["windowId"] == body["windowId"]
-    assert "secondsRemaining" in body["clock"]
+    assert r.status_code == 410
+    assert r.get_json().get("discontinued") is True
 
 
 def test_vote_page_embeds_clock_and_script(client):
+    """Give-up: /vote is the shut-down page, not a live ballot with clock markup."""
     r = client.get("/vote")
     assert r.status_code == 200
     html = r.data.decode("utf-8")
-    assert "data-voting-clock" in html
-    assert "voting-clock.js" in html
-    assert "data-ends-at" in html
-    assert "Monday 00:00 UTC" in html
-    # Explicit data-window-id for vote.js (do not scrape prose)
-    assert 'data-window-id="' in html
-    assert 'id="ballot-root"' in html or "ballot-header" in html
-    # Server-rendered human countdown (works before JS hydrates)
-    assert "Closes in" in html
+    assert "The Internet Party has shut down" in html
+    assert "data-shutdown-title" in html
 
 
 def test_vote_js_reads_data_window_id_not_prose():
@@ -183,19 +160,15 @@ def test_home_embeds_clock(client):
     r = client.get("/")
     assert r.status_code == 200
     html = r.data.decode("utf-8")
-    assert "data-voting-clock" in html
-    assert "voting-clock.js" in html
-    assert "Closes in" in html
+    assert "The Internet Party has shut down" in html
+    assert "discontinued" in html.lower()
 
 
 def test_about_documents_real_world_windows(client):
     r = client.get("/about")
     assert r.status_code == 200
     html = r.data.decode("utf-8")
-    assert "ISO week" in html or "Monday 00:00 UTC" in html
-    assert "/voting-clock" in html
-    assert "data-voting-clock" in html
-    assert "Closes in" in html
+    assert "shut down" in html.lower() or "discontinued" in html.lower()
 
 
 def test_login_and_register_embed_compact_clock(client):
@@ -203,15 +176,10 @@ def test_login_and_register_embed_compact_clock(client):
         r = client.get(path)
         assert r.status_code == 200, path
         html = r.data.decode("utf-8")
-        assert "data-voting-clock" in html, path
-        assert "voting-clock.js" in html, path
-        assert "Closes in" in html, path
+        assert "shut down" in html.lower() or "discontinued" in html.lower(), path
 
 
 def test_status_includes_remaining_label(client):
     r = client.get("/status")
-    assert r.status_code in (200, 503)
-    body = r.get_json()
-    if body.get("status") == "ok":
-        assert body.get("remainingLabel")
-        assert "m" in body["remainingLabel"] or "h" in body["remainingLabel"] or "d" in body["remainingLabel"]
+    assert r.status_code == 410
+    assert r.get_json().get("discontinued") is True

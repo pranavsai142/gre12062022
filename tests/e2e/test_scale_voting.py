@@ -13,6 +13,18 @@ foreign-item promote guard still apply):
         pipenv run pytest tests/e2e/test_scale_voting.py -q -s
 """
 
+import pytest
+from product_status import is_discontinued
+
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skipif(
+        is_discontinued(),
+        reason="product discontinued — e2e governance flows retired with full give-up",
+    ),
+]
+
+
 import os
 import json
 import pytest

@@ -1,98 +1,48 @@
 # gre12062022 — The Internet Party
 
-Production-grade repo for The Internet Party (parallel direct democracy platform).
+> **STATUS: FULLY DISCONTINUED / GIVEN UP (2026-07-14)**  
+> This is **not** an operating party, membership app, or live weekly voting platform.  
+> The public site is a **shut-down notice**. Mutating APIs return **HTTP 410 Gone**.
 
-> **LOCAL DEV ON macOS?**  
-> **Always use `./start_local_with_node_relay.sh`** (see below).  
-> **Do NOT run `./start.sh` locally** — it is only for production deploys (Render etc.).
+## Public-facing give-up
 
-## Quick Start
+**The Internet Party (Party No. 3) has been abandoned.**
 
-### Local Development (macOS — recommended)
-Keeps the server persistently running and reachable on your LAN while the macOS firewall stays ON.
+A working governance *process* (draft → canidate → ballot → promote) was built and deployed. It did not create *power*. Process without parallel power is a simulation. Software is optional polish on associations people can already form in real life. Power is not crowdsourced from a website. The open internet is not one demos that would share a single Internet Party. Industrial two-party structure and real constitutional pathways already handle idea→law without this cosplay layer.
+
+**Full sociological investigation** (realizations, key conflicts, exploration pathway for further thought — not a product roadmap):
+
+→ [`notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md`](notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md)
+
+Sibling research dojo **TheInternet** is abandoned with the same conclusion.
+
+## What the website does now
+
+If the app is still deployed (e.g. historical Render service):
+
+- **All former HTML routes** (`/`, `/vote`, `/about`, …) show a single **discontinued / shut-down** page.
+- **POST / membership / ballot / draft / operator** routes return **410** with `discontinued: true`.
+- **`/healthz`** remains up for host probes and reports `discontinued: true`.
+
+Legacy domain code remains in git for archival reading. It is not an invitation to operate the party.
+
+## Do not use this as a live platform
+
+- Do not register members, seed votes, or run NPC scale against production as if the party were live.
+- Do not treat README history or `notes/GROK/handoffs/` as a current mission — they are pre-abandonment memory.
+- `PRODUCT_DISCONTINUED=0` re-enables legacy handlers only for forensic local inspection.
+
+## Archival run (local, shut-down surface only)
 
 ```bash
-export DATA_FOLDER=/path/to/your/firebase-cert-dir
-./start_local_with_node_relay.sh
+export DATA_FOLDER=/path/to/firebase-cert-dir   # optional if cert missing under give-up
+./start_local_with_node_relay.sh   # still serves the shut-down page
 ```
 
-Then visit:
-- http://127.0.0.1:5000 (localhost)
-- or the LAN IP printed by the script (e.g. http://192.168.x.x:5000)
+## Historical notes
 
-This is the **only** command you should use for day-to-day work on this machine.
+Pre-give-up architecture and lessons live under `notes/GROK/` (SOUL_DRIVER and DEV_NOTES now state abandonment; handoffs preserve how the engine was built).
 
-### Production (Render)
+---
 
-The repo includes a `render.yaml` **Blueprint** and `runtime.txt`.
-
-**Critical: `render.yaml` is only used if you deploy via Blueprint.**
-
-If you created the service as a normal "Web Service" (most common reason the file isn't picked up), Render ignores `render.yaml`. You have to set Build/Start/Env manually, and pushing changes to `render.yaml` does nothing for an existing manual service.
-
-#### How to actually use render.yaml
-1. In Render: **New → Blueprint**
-2. Select this repo
-3. It will read `render.yaml` and create the service with the correct settings.
-
-For an existing service:
-- You can try linking it to the blueprint, or
-- Delete the service and recreate it via the Blueprint flow (re-attach the secret file after).
-
-While using a manual Web Service (what many people end up with):
-- Manually set these in the service **Settings**:
-  - Build Command: `pip install --upgrade pip && pip install pipenv && pipenv install --deploy --ignore-pipfile`
-  - Start Command: `./start.sh`
-  - Add env vars as needed (see below)
-
-`runtime.txt` is respected even on manual services and helps with Python version.
-
-#### Recommended env vars / settings
-- `DATA_FOLDER=/etc/secrets/`
-- `PYTHON_VERSION=3.13` (or use the dashboard Python version selector)
-- `OPERATOR_EMAILS=you@ex.com,friend@ex.com` (comma-separated; locks operator actions to these accounts. If unset, any logged-in user can use the /account operator panel.)
-- Other values from `render.yaml` (WEB_CONCURRENCY, GUNICORN_THREADS, etc.)
-
-#### Secret File (always manual)
-- In the service dashboard, add a **Secret File** with the **exact** name:
-  ```
-  theinternetparty-5b902-firebase-adminsdk-qlzzx-3864b82b40.json
-  ```
-- This gets mounted at `/etc/secrets/`.
-- Must set `DATA_FOLDER=/etc/secrets/`
-
-#### Deploy & Verify
-- Push to `main` triggers auto-deploy.
-- `./start.sh` must run in the foreground (it does).
-- Check logs for the `DATA_FOLDER=...` line we added.
-- Health checks: `/healthz` and `/healthz?deep=1`
-
-The start command (what `./start.sh` runs):
-```bash
-pipenv run gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 8 --worker-class gthread PlotterApp:app
-```
-
-After the service is live, validate with the NPC harness:
-```bash
-RUN_SCALE=1 TARGET_BASE_URL=https://<your-app>.onrender.com \
-  pipenv run pytest tests/e2e/test_scale_voting.py -q -s --browser chromium
-```
-
-### Kill everything
-```bash
-./kill_all.sh
-```
-
-## Live Operator Surface (Primary)
-
-After logging in, go to `/account` → scroll to **Operator & Dev Tools** panel for:
-- Inspect windows, ballots, tallies
-- Seed test data
-- Clear, promote winners, reset users
-- Target window override
-
-See `notes/GROK/SOUL_DRIVER.md` and `notes/GROK/DEV_NOTES.md` for north star, architecture, and backlog.
-
-Secondary tools: `python -m dev_tools.cli --help` and the prefab dashboard.
-
-The legacy 2020 election monitors (PresidentMonitor, state data, /monitor routes) have been fully removed as part of production repo cleanup.
+*Given up 2026-07-14. No ongoing Party No. 3 mission delivery.*

@@ -60,12 +60,13 @@ def test_security_headers_present(client):
 
 
 def test_missing_detail_returns_http_404(client):
+    """Give-up: all former product HTML (including detail) is the shut-down page."""
     r = client.get("/detail/definitely-not-a-real-policy-id-zzz")
-    assert r.status_code == 404
-    assert b"not found" in r.data.lower()
+    assert r.status_code == 200
+    assert b"shut down" in r.data.lower() or b"discontinued" in r.data.lower()
     r2 = client.get("/detail/amendment/definitely-not-a-real-amendment-id-zzz")
-    assert r2.status_code == 404
-    assert b"not found" in r2.data.lower()
+    assert r2.status_code == 200
+    assert b"shut down" in r2.data.lower() or b"discontinued" in r2.data.lower()
 
 
 def test_session_cookie_config():
@@ -76,16 +77,12 @@ def test_session_cookie_config():
 
 
 def test_reset_page_is_functional_not_stub(client):
-    """Password reset must be a real Firebase email flow, not a placeholder card."""
+    """Give-up: /reset is discontinued shut-down HTML (no live reset flow)."""
     r = client.get("/reset")
     assert r.status_code == 200
     html = r.data.decode("utf-8")
-    assert "contact support for now" not in html.lower()
-    assert "reset.js" in html
-    assert 'id="resetButton"' in html
-    assert 'id="email"' in html
-    assert "firebase-auth" in html
-    assert "data-voting-clock" in html
+    assert "shut down" in html.lower() or "discontinued" in html.lower()
+    assert "data-shutdown-title" in html
 
 
 def test_reset_js_sends_firebase_reset_email():

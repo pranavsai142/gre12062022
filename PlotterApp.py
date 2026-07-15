@@ -6,6 +6,13 @@ from datetime import datetime
 import uuid
 
 import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DetailPage, DetailAmendmentPage, DraftsPage
+import ShutdownPage
+from product_status import (
+    PRODUCT_DISCONTINUED,
+    DISCONTINUED_HTTP,
+    discontinued_payload,
+    is_discontinued,
+)
 from Policy import Policy
 from Amendment import Amendment
 import User
@@ -17,11 +24,14 @@ app = Flask(__name__)
 
 # Firebase Admin SDK via the one centralized initializer (same path all tools use).
 # Fail loudly at startup — a silently uninitialized app 500s on every request.
+# When discontinued, still init if possible so /healthz?deep=1 can report status,
+# but do not block serving the shut-down HTML if the cert is missing.
 if not Database.ensure_firebase_initialized():
-    raise RuntimeError(
-        f"Firebase service account not found at {Database.get_service_account_path()}. "
-        "Set DATA_FOLDER to the directory containing the admin JSON (see README)."
-    )
+    if not PRODUCT_DISCONTINUED:
+        raise RuntimeError(
+            f"Firebase service account not found at {Database.get_service_account_path()}. "
+            "Set DATA_FOLDER to the directory containing the admin JSON (see README)."
+        )
 
 
 def _stable_secret_key():
@@ -92,16 +102,71 @@ def _security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    if is_discontinued():
+        response.headers["X-Product-Status"] = "discontinued"
     return response
+
+
+# Paths that stay alive under full give-up (ops probes + static assets only).
+_DISCONTINUED_PASSTHROUGH_PREFIXES = ("/static",)
+_DISCONTINUED_PASSTHROUGH_EXACT = frozenset({"/healthz"})
+
+
+@app.before_request
+def _product_discontinued_gate():
+    """Full give-up: shut-down HTML for browsers; 410 Gone for writes and product APIs.
+
+    Does not erase historical handlers — they remain in source for archival reading.
+    PRODUCT_DISCONTINUED=0 re-enables legacy behavior for forensic inspection only.
+    """
+    if not is_discontinued():
+        return None
+
+    path = request.path or "/"
+
+    if path in _DISCONTINUED_PASSTHROUGH_EXACT:
+        return None
+    if any(path.startswith(p) for p in _DISCONTINUED_PASSTHROUGH_PREFIXES):
+        return None
+
+    # Mutating methods: hard refuse (membership, ballots, drafts, operator tools).
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        return jsonify(discontinued_payload()), DISCONTINUED_HTTP
+
+    # Product JSON APIs that would look "live" if left open.
+    if path in (
+        "/ballot-items",
+        "/voting-clock",
+        "/status",
+        "/dev-tools/windows",
+    ) or path.startswith("/dev-tools/"):
+        return jsonify(discontinued_payload()), DISCONTINUED_HTTP
+
+    # robots / sitemap still served as text (handlers rewrite discontinued copy).
+    if path in ("/robots.txt", "/sitemap.xml"):
+        return None
+
+    # All former HTML product surfaces → single shut-down page.
+    html = ShutdownPage.render(session.get("user"), path=path)
+    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
 
 @app.route('/healthz')
 def healthz():
     """Lightweight health endpoint for Render health checks / uptime monitors.
     Shallow by default (no RTDB roundtrip per ping); pass ?deep=1 to also
-    verify database connectivity and report the live voting window clock."""
+    verify database connectivity and report the live voting window clock.
+    When discontinued, shallow stays 200 so hosts do not thrash; body marks discontinued."""
     release = _release_info()
+    disc = is_discontinued()
     if request.args.get("deep"):
+        if disc:
+            return jsonify({
+                "status": "discontinued",
+                "discontinued": True,
+                "database": "not-queried",
+                **release,
+            })
         try:
             from firebase_admin import db as _db
             _db.reference("meta").get(shallow=True)
@@ -123,7 +188,10 @@ def healthz():
             **release,
         })
     # Shallow: keep cheap for Render probes, but include revision for deploy checks
-    return jsonify({"status": "ok", "revision": release["revision"]})
+    body = {"status": "discontinued" if disc else "ok", "revision": release["revision"]}
+    if disc:
+        body["discontinued"] = True
+    return jsonify(body)
 
 @app.route('/validate-token', methods=['POST'])
 def validate_token():
@@ -605,7 +673,15 @@ def dev_tools_set_window():
 
 @app.route('/robots.txt')
 def robots_txt():
-    """Public robots.txt — polite crawl policy for a live civic platform."""
+    """Public robots.txt — discontinued site: allow crawl of shut-down notice only."""
+    if is_discontinued():
+        body = (
+            "User-agent: *\n"
+            "Allow: /\n"
+            "\n"
+            "# The Internet Party — SERVICE DISCONTINUED. No live governance surface.\n"
+        )
+        return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
     body = (
         "User-agent: *\n"
         "Allow: /\n"
@@ -624,9 +700,12 @@ def robots_txt():
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    """Minimal public sitemap for the live civic surface (real calendar site)."""
+    """Minimal public sitemap (home only when discontinued)."""
     base = "https://theinternetparty.us"
-    paths = ["/", "/vote", "/policy", "/about", "/login", "/register", "/status"]
+    if is_discontinued():
+        paths = ["/"]
+    else:
+        paths = ["/", "/vote", "/policy", "/about", "/login", "/register", "/status"]
     urls = "\n".join(
         f"  <url><loc>{base}{p}</loc><changefreq>daily</changefreq></url>"
         for p in paths

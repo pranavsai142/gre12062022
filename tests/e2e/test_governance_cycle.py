@@ -8,6 +8,18 @@ with 100+ voters in tests/e2e/test_scale_voting.py.
 """
 
 import pytest
+from product_status import is_discontinued
+
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skipif(
+        is_discontinued(),
+        reason="product discontinued — e2e governance flows retired with full give-up",
+    ),
+]
+
+
+import pytest
 
 from npc.scenarios import run_full_cycle
 

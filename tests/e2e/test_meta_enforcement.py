@@ -8,6 +8,18 @@ MetaPolicy enforcement tests (server-side teeth, via the real HTTP surface).
 """
 
 import pytest
+from product_status import is_discontinued
+
+pytestmark = [
+    pytest.mark.e2e,
+    pytest.mark.skipif(
+        is_discontinued(),
+        reason="product discontinued — e2e governance flows retired with full give-up",
+    ),
+]
+
+
+import pytest
 
 from tests.conftest import set_current_window_override, make_npc
 

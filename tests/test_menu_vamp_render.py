@@ -115,6 +115,14 @@ PATH_CASES = [
 
 @pytest.mark.parametrize("path,out_name", PATH_CASES)
 def test_path_vamp(path, out_name):
+    from product_status import is_discontinued
+
+    if is_discontinued():
+        # Full give-up: HTTP paths serve ShutdownPage (no legacy menu vamp chrome).
+        html = get_path_html(path)
+        write_capture(out_name, html)
+        assert "shut down" in html.lower() or "discontinued" in html.lower()
+        return
     html = get_path_html(path)
     write_capture(out_name, html)
     assert_menu_vamp(html)
