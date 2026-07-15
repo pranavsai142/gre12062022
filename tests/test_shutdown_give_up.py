@@ -94,6 +94,23 @@ def test_shutdown_page_module_markers():
     assert "/vote" in html
 
 
+def test_shutdown_path_is_html_escaped_against_reflected_xss(client):
+    """Regression: request path must not inject raw tags into the shut-down page."""
+    evil = "/<script>alert(1)</script>"
+    r = client.get(evil)
+    assert r.status_code == 200
+    body = r.data.decode("utf-8")
+    # Unescaped script must not appear as executable HTML
+    assert "<script>alert(1)</script>" not in body
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in body
+    # Same via the shipped render function directly
+    import ShutdownPage
+
+    rendered = ShutdownPage.render(None, path=evil)
+    assert "<script>alert(1)</script>" not in rendered
+    assert "&lt;script&gt;" in rendered
+
+
 def test_investigation_archive_has_required_sections():
     archive = REPO_ROOT / "notes" / "GROK" / "SOCIETAL_GIVE_UP_INVESTIGATION.md"
     assert archive.is_file()

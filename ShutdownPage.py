@@ -7,11 +7,14 @@ copy, no invitation to vote/login/draft as if the party were operating.
 
 from __future__ import annotations
 
+import html
+
 
 def render(user=None, path: str = "/") -> str:
     """Return complete HTML for any former product URL under discontinuation."""
     _ = user  # session ignored — no member surface
-    path_display = path or "/"
+    # Escape so a crafted path cannot inject HTML/JS into the shut-down page (reflected XSS).
+    path_display = html.escape(path or "/", quote=True)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
