@@ -20,63 +20,55 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture(scope="module")
 def client():
     """Real Flask test client for PlotterApp:app (same entry as gunicorn)."""
-    # Import after DATA_FOLDER is available from the environment / defaults.
     from PlotterApp import app
+    from disclaimer_helpers import accept_disclaimer
 
     app.config["TESTING"] = True
     with app.test_client() as c:
+        accept_disclaimer(c)
         yield c
 
 
 def test_healthz_shallow_returns_ok(client):
-    """Render healthCheckPath is /healthz — must stay 200 (discontinued still up for probes)."""
+    """Render healthCheckPath is /healthz — must stay 200."""
     r = client.get("/healthz")
     assert r.status_code == 200
     body = r.get_json()
     assert body is not None
-    # Full give-up: shallow reports discontinued but remains probe-friendly
-    assert body.get("status") in ("ok", "discontinued")
-    if body.get("status") == "discontinued":
-        assert body.get("discontinued") is True
+    assert body.get("status") == "ok"
     assert body.get("revision")
     assert len(str(body.get("revision"))) >= 4
 
 
 def test_healthz_deep_returns_ok_when_firebase_available(client):
-    """Deep probe: under give-up, reports discontinued without thrashing hosts."""
+    """Deep probe verifies RTDB when available."""
     r = client.get("/healthz?deep=1")
     assert r.status_code == 200, r.data
     body = r.get_json()
-    assert body.get("status") in ("ok", "discontinued")
-    if body.get("discontinued"):
-        assert body.get("status") == "discontinued"
-    else:
-        assert body.get("database") == "ok"
+    assert body.get("status") == "ok"
+    assert body.get("database") == "ok"
 
 
 def test_public_primary_routes_ok(client):
-    """Spot-check public surface: HTML shut-down pages; product JSON APIs are 410."""
-    for path in ("/", "/vote", "/policy", "/about", "/login", "/register", "/reset", "/robots.txt"):
+    """After disclaimer accept: product HTML + JSON APIs are live demo."""
+    for path in ("/", "/vote", "/policy", "/about", "/login", "/register", "/reset", "/robots.txt", "/disclaimer"):
         r = client.get(path)
         assert r.status_code == 200, f"{path} -> {r.status_code}"
         assert r.data and len(r.data) > 10, f"{path} empty body"
-        if path != "/robots.txt":
-            assert b"shut down" in r.data.lower() or b"discontinued" in r.data.lower(), path
     for path in ("/ballot-items", "/voting-clock", "/status"):
         r = client.get(path)
-        assert r.status_code == 410, f"{path} -> {r.status_code}"
-        assert r.get_json().get("discontinued") is True
+        assert r.status_code == 200, f"{path} -> {r.status_code}"
+        assert r.is_json
 
 
 def test_robots_txt_is_professional(client):
-    """Discontinued site must not ship a joke robots.txt."""
     r = client.get("/robots.txt")
     assert r.status_code == 200
     text = r.data.decode("utf-8")
     assert "User-agent:" in text
     assert "Allow:" in text
     assert "fuck" not in text.lower()
-    assert "DISCONTINUED" in text.upper() or "discontinued" in text.lower()
+    assert "disclaimer" in text.lower() or "Sitemap:" in text
 
 
 def test_sitemap_xml_lists_public_pages(client):
@@ -84,44 +76,50 @@ def test_sitemap_xml_lists_public_pages(client):
     assert r.status_code == 200
     body = r.data.decode("utf-8")
     assert "urlset" in body
-    # Give-up: home only (no invitation to live vote/library paths as live product)
-    assert "https://theinternetparty.us/" in body or "<loc>" in body
+    for path in ("/vote", "/policy", "/about", "/disclaimer"):
+        assert path in body
 
 
 def test_public_status_includes_live_window(client):
-    """Under give-up, /status is Gone (not a live window feed)."""
     r = client.get("/status")
-    assert r.status_code == 410
+    assert r.status_code in (200, 503)
     body = r.get_json()
-    assert body.get("discontinued") is True
+    assert body.get("service") == "the-internet-party"
+    assert "windowId" in body or "clock_error" in body
+    if body.get("status") == "ok":
+        assert body.get("database") == "ok"
+        assert isinstance(body.get("secondsRemaining"), int)
 
 
 def test_ballot_items_is_json_shape(client):
-    """Under give-up, /ballot-items refuses (no live NPC ballot surface)."""
     r = client.get("/ballot-items")
-    assert r.status_code == 410
+    assert r.status_code == 200
     body = r.get_json()
-    assert body.get("discontinued") is True
-    assert body.get("success") is False
+    assert isinstance(body, dict)
+    assert "windowId" in body
+    assert "items" in body
+    assert "count" in body
+    assert isinstance(body["items"], list)
+    assert body["count"] == len(body["items"])
 
 
 def test_validate_token_missing_body_is_401_not_500(client):
-    """Under give-up, all POSTs including validate-token are 410 discontinued."""
+    """Malformed login posts must not 500 (after disclaimer unlock)."""
     r = client.post("/validate-token", data=b"", content_type="application/json")
-    assert r.status_code == 410
+    assert r.status_code == 401
     body = r.get_json()
-    assert body.get("discontinued") is True
+    assert body.get("authenticated") is False
 
     r2 = client.post("/validate-token", json={})
-    assert r2.status_code == 410
-    assert r2.get_json().get("discontinued") is True
+    assert r2.status_code == 401
+    assert r2.get_json().get("authenticated") is False
 
     r3 = client.post("/validate-token", json={"idToken": ""})
-    assert r3.status_code == 410
+    assert r3.status_code == 401
 
 
 def test_api_posts_empty_body_return_json_not_html_400(client):
-    """Empty JSON bodies under give-up: structured 410, never HTML error shells."""
+    """Empty JSON bodies must not become Werkzeug HTML 400 pages for API clients."""
     for path in (
         "/submit-ballot",
         "/close-window",
@@ -129,11 +127,12 @@ def test_api_posts_empty_body_return_json_not_html_400(client):
         "/dev-tools/set-window",
     ):
         r = client.post(path, data=b"", content_type="application/json")
-        assert r.status_code == 410, path
+        assert r.status_code != 500, path
         assert b"<!doctype html>" not in r.data.lower(), f"{path} returned HTML: {r.status_code}"
-        assert r.is_json
-        body = r.get_json()
-        assert body.get("discontinued") is True
+        if r.is_json:
+            assert isinstance(r.get_json(), dict)
+        else:
+            assert "json" in (r.content_type or ""), f"{path} ct={r.content_type}"
 
 
 def test_stable_secret_key_is_deterministic():

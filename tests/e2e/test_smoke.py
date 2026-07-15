@@ -10,25 +10,28 @@ Run:
 """
 
 import pytest
-from product_status import is_discontinued
-
-pytestmark = [
-    pytest.mark.e2e,
-    pytest.mark.skipif(
-        is_discontinued(),
-        reason="product discontinued — e2e governance flows retired with full give-up",
-    ),
-]
-
 
 import pytest
 from playwright.sync_api import Page, expect
 
+def _accept_disclaimer_if_shown(page, base_url: str):
+    """Forced fair-warning gate — check all boxes and continue."""
+    page.goto(f"{base_url}/")
+    if "/disclaimer" in page.url or page.locator("[data-disclaimer-page]").count():
+        page.goto(f"{base_url}/disclaimer")
+        for name in (
+            "ack_simulation", "ack_polish", "ack_lockin",
+            "ack_crowdsource", "ack_demos", "ack_demo_only",
+        ):
+            page.locator(f'input[name="{name}"]').check()
+        page.locator("[data-disclaimer-submit]").click()
+        page.wait_for_load_state("domcontentloaded")
 
 @pytest.mark.e2e
 def test_home_loads_and_navigates_to_vote_and_policy(page: Page, base_url: str):
     """Smoke: load home, verify navigation targets /vote and /policy work."""
     # Load home
+    _accept_disclaimer_if_shown(page, base_url)
     page.goto(f"{base_url}/")
     expect(page).to_have_title("The Internet Party — Truth • Freedom • Health")
 

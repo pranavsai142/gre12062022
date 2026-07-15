@@ -1,48 +1,53 @@
 # gre12062022 — The Internet Party
 
-> **STATUS: FULLY DISCONTINUED / GIVEN UP (2026-07-14)**  
-> This is **not** an operating party, membership app, or live weekly voting platform.  
-> The public site is a **shut-down notice**. Mutating APIs return **HTTP 410 Gone**.
+> **STATUS: DEMO OF AN ABANDONED MISSION (2026-07-14)**  
+> Party No. 3 as a real national parallel government is **given up**.  
+> The software stays online so people can **see the idea and use the mechanics** — only after a **forced fair-warning disclaimer**.
 
-## Public-facing give-up
+## What visitors experience
 
-**The Internet Party (Party No. 3) has been abandoned.**
+1. **First hit** → `/disclaimer` (cannot skip).  
+   Long page with the sociological revelations from the give-up conversation, concrete failure examples, and **required checkboxes** (process without power is a simulation; software is optional polish; two-party lock-in; power is not crowdsourced; no single online demos; demo-only).
+2. **After accept** → full site (vote, drafts, library, login, operator tools) works as a **sandbox demo**.  
+   A sticky banner remains: *Demo of an abandoned mission…*
+3. Optional hard tombstone: set `PRODUCT_DISCONTINUED=1` (410 writes + shut-down HTML only).
 
-A working governance *process* (draft → canidate → ballot → promote) was built and deployed. It did not create *power*. Process without parallel power is a simulation. Software is optional polish on associations people can already form in real life. Power is not crowdsourced from a website. The open internet is not one demos that would share a single Internet Party. Industrial two-party structure and real constitutional pathways already handle idea→law without this cosplay layer.
+## Public-facing give-up (the point of the disclaimer)
 
-**Full sociological investigation** (realizations, key conflicts, exploration pathway for further thought — not a product roadmap):
+The owner concluded:
 
-→ [`notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md`](notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md)
+- **Parallel process without parallel power is a simulation.**
+- **Software is optional polish** on associations people can already form.
+- **Industrial two-party lock-in** is structural; an app does not repeal it.
+- **Power is not crowdsourced** from a website.
+- The **open internet is not one demos** — universal “one party” fragments.
 
-Sibling research dojo **TheInternet** is abandoned with the same conclusion.
+Full write-up: [`notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md`](notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md)  
+What-we-learned handoff: [`notes/GROK/handoffs/2026-07-14-what-we-learned-give-up.md`](notes/GROK/handoffs/2026-07-14-what-we-learned-give-up.md)
 
-## What the website does now
+Sibling **TheInternet** dojo is still documented as abandoned (no agent-training mission for Party No. 3 at scale).
 
-If the app is still deployed (e.g. historical Render service):
-
-- **All former HTML routes** (`/`, `/vote`, `/about`, …) show a single **discontinued / shut-down** page.
-- **POST / membership / ballot / draft / operator** routes return **410** with `discontinued: true`.
-- **`/healthz`** remains up for host probes and reports `discontinued: true`.
-
-Legacy domain code remains in git for archival reading. It is not an invitation to operate the party.
-
-## Do not use this as a live platform
-
-- Do not register members, seed votes, or run NPC scale against production as if the party were live.
-- Do not treat README history or `notes/GROK/handoffs/` as a current mission — they are pre-abandonment memory.
-- `PRODUCT_DISCONTINUED=0` re-enables legacy handlers only for forensic local inspection.
-
-## Archival run (local, shut-down surface only)
+## Local run
 
 ```bash
-export DATA_FOLDER=/path/to/firebase-cert-dir   # optional if cert missing under give-up
-./start_local_with_node_relay.sh   # still serves the shut-down page
+export DATA_FOLDER=/path/to/your/firebase-cert-dir
+./start_local_with_node_relay.sh
 ```
 
-## Historical notes
+Open http://127.0.0.1:5000 → forced disclaimer → then explore.
 
-Pre-give-up architecture and lessons live under `notes/GROK/` (SOUL_DRIVER and DEV_NOTES now state abandonment; handoffs preserve how the engine was built).
+Env knobs:
 
----
+| Variable | Default | Meaning |
+|---|---|---|
+| `FORCED_DISCLAIMER` | `1` | Session gate on `/disclaimer` |
+| `PRODUCT_DISCONTINUED` | `0` | `1` = hard tombstone (no demo) |
 
-*Given up 2026-07-14. No ongoing Party No. 3 mission delivery.*
+## Production (Render)
+
+Same as before: Blueprint / `start.sh` / Secret File for Firebase.  
+After deploy, humans hit the disclaimer first; `/healthz` stays probe-friendly (`forced_disclaimer: true`).
+
+## Historical architecture
+
+See `notes/GROK/SOUL_DRIVER.md` and `notes/GROK/DEV_NOTES.md` (mission closed; demo retained). Secondary tools: `python -m dev_tools.cli --help`.

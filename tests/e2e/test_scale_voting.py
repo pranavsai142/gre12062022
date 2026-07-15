@@ -14,16 +14,6 @@ foreign-item promote guard still apply):
 """
 
 import pytest
-from product_status import is_discontinued
-
-pytestmark = [
-    pytest.mark.e2e,
-    pytest.mark.skipif(
-        is_discontinued(),
-        reason="product discontinued — e2e governance flows retired with full give-up",
-    ),
-]
-
 
 import os
 import json
@@ -32,7 +22,6 @@ import pytest
 from npc.scenarios import run_full_cycle
 
 RUN_SCALE = os.environ.get("RUN_SCALE") == "1"
-
 
 @pytest.mark.scale
 @pytest.mark.skipif(not RUN_SCALE, reason="set RUN_SCALE=1 to run the 100-user scale scenario")

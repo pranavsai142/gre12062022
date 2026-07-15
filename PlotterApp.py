@@ -7,11 +7,19 @@ import uuid
 
 import IndexPage, AboutPage, AccountPage, LoginPage, NotFoundPage, PolicyPage, RegisterPage, ResetPage, VotePage, DetailPage, DetailAmendmentPage, DraftsPage
 import ShutdownPage
+import DisclaimerPage
 from product_status import (
     PRODUCT_DISCONTINUED,
     DISCONTINUED_HTTP,
+    DISCLAIMER_VERSION,
     discontinued_payload,
+    need_disclaimer_payload,
+    NEED_DISCLAIMER_HTTP,
     is_discontinued,
+    is_forced_disclaimer,
+    session_has_accepted_disclaimer,
+    mark_disclaimer_accepted,
+    product_status_header,
 )
 from Policy import Policy
 from Amendment import Amendment
@@ -24,8 +32,7 @@ app = Flask(__name__)
 
 # Firebase Admin SDK via the one centralized initializer (same path all tools use).
 # Fail loudly at startup — a silently uninitialized app 500s on every request.
-# When discontinued, still init if possible so /healthz?deep=1 can report status,
-# but do not block serving the shut-down HTML if the cert is missing.
+# Hard shut-down mode may still serve tombstone HTML without a cert.
 if not Database.ensure_firebase_initialized():
     if not PRODUCT_DISCONTINUED:
         raise RuntimeError(
@@ -102,61 +109,151 @@ def _security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    if is_discontinued():
-        response.headers["X-Product-Status"] = "discontinued"
+    response.headers["X-Product-Status"] = product_status_header()
+    # Persistent reminder banner after forced disclaimer accept (HTML only).
+    if (
+        is_forced_disclaimer()
+        and session_has_accepted_disclaimer(session)
+        and response.status_code == 200
+        and response.content_type
+        and "text/html" in response.content_type
+        and request.path not in ("/disclaimer",)
+    ):
+        try:
+            data = response.get_data(as_text=True)
+            banner = DisclaimerPage.banner_html()
+            if "<body" in data.lower() and "data-give-up-banner" not in data:
+                # Insert after opening body tag
+                import re
+                data2, n = re.subn(
+                    r"(<body[^>]*>)",
+                    r"\1" + banner,
+                    data,
+                    count=1,
+                    flags=re.IGNORECASE,
+                )
+                if n:
+                    response.set_data(data2)
+        except Exception:
+            pass
     return response
 
 
-# Paths that stay alive under full give-up (ops probes + static assets only).
-_DISCONTINUED_PASSTHROUGH_PREFIXES = ("/static",)
-_DISCONTINUED_PASSTHROUGH_EXACT = frozenset({"/healthz"})
+# Ops + disclaimer surface always reachable.
+_GATE_PASSTHROUGH_PREFIXES = ("/static",)
+_GATE_PASSTHROUGH_EXACT = frozenset({
+    "/healthz",
+    "/disclaimer",
+    "/accept-disclaimer",
+    "/robots.txt",
+    "/sitemap.xml",
+})
+
+_REQUIRED_DISCLAIMER_ACKS = (
+    "ack_simulation",
+    "ack_polish",
+    "ack_lockin",
+    "ack_crowdsource",
+    "ack_demos",
+    "ack_demo_only",
+)
+
+
+def _wants_html_response() -> bool:
+    best = request.accept_mimetypes.best_match(["text/html", "application/json"])
+    return best == "text/html" or (
+        request.method == "GET"
+        and "text/html" in (request.headers.get("Accept") or "")
+    )
 
 
 @app.before_request
-def _product_discontinued_gate():
-    """Full give-up: shut-down HTML for browsers; 410 Gone for writes and product APIs.
+def _product_gate():
+    """Hard shut-down OR forced disclaimer before demo use.
 
-    Does not erase historical handlers — they remain in source for archival reading.
-    PRODUCT_DISCONTINUED=0 re-enables legacy behavior for forensic inspection only.
+    Default: full app available after accepting the fair-warning page.
+    PRODUCT_DISCONTINUED=1: tombstone HTML + 410 writes (legacy full give-up).
     """
-    if not is_discontinued():
-        return None
-
     path = request.path or "/"
 
-    if path in _DISCONTINUED_PASSTHROUGH_EXACT:
+    if path in _GATE_PASSTHROUGH_EXACT:
         return None
-    if any(path.startswith(p) for p in _DISCONTINUED_PASSTHROUGH_PREFIXES):
+    if any(path.startswith(p) for p in _GATE_PASSTHROUGH_PREFIXES):
         return None
 
-    # Mutating methods: hard refuse (membership, ballots, drafts, operator tools).
-    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
-        return jsonify(discontinued_payload()), DISCONTINUED_HTTP
+    # --- Hard tombstone mode ---
+    if is_discontinued():
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            return jsonify(discontinued_payload()), DISCONTINUED_HTTP
+        if path in (
+            "/ballot-items",
+            "/voting-clock",
+            "/status",
+            "/dev-tools/windows",
+        ) or path.startswith("/dev-tools/"):
+            return jsonify(discontinued_payload()), DISCONTINUED_HTTP
+        html = ShutdownPage.render(session.get("user"), path=path)
+        return html, 200, {"Content-Type": "text/html; charset=utf-8"}
 
-    # Product JSON APIs that would look "live" if left open.
-    if path in (
+    # --- Forced disclaimer demo mode ---
+    if not is_forced_disclaimer():
+        return None
+    if session_has_accepted_disclaimer(session):
+        return None
+
+    # Block APIs / mutators until accept
+    if request.method in ("POST", "PUT", "PATCH", "DELETE") or path in (
         "/ballot-items",
         "/voting-clock",
         "/status",
-        "/dev-tools/windows",
     ) or path.startswith("/dev-tools/"):
-        return jsonify(discontinued_payload()), DISCONTINUED_HTTP
+        return jsonify(need_disclaimer_payload()), NEED_DISCLAIMER_HTTP
 
-    # robots / sitemap still served as text (handlers rewrite discontinued copy).
-    if path in ("/robots.txt", "/sitemap.xml"):
-        return None
+    # HTML product surfaces → force disclaimer
+    from urllib.parse import quote
+    nxt = path
+    if request.query_string:
+        nxt = path + "?" + request.query_string.decode("utf-8", "replace")
+    return redirect("/disclaimer?next=" + quote(nxt, safe="/?&=%"))
 
-    # All former HTML product surfaces → single shut-down page.
-    html = ShutdownPage.render(session.get("user"), path=path)
-    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+@app.route("/disclaimer", methods=["GET"])
+def disclaimer():
+    """Forced fair-warning page — must be completed before the demo unlocks."""
+    nxt = request.args.get("next") or "/"
+    # Prevent open redirect
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = "/"
+    return DisclaimerPage.render(next_path=nxt), 200, {
+        "Content-Type": "text/html; charset=utf-8"
+    }
+
+
+@app.route("/accept-disclaimer", methods=["POST"])
+def accept_disclaimer():
+    """Record that the visitor checked every required revelation acknowledgment."""
+    missing = [k for k in _REQUIRED_DISCLAIMER_ACKS if not request.form.get(k)]
+    nxt = request.form.get("next") or request.args.get("next") or "/"
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = "/"
+    version = request.form.get("version") or ""
+    if missing or version != DISCLAIMER_VERSION:
+        err = (
+            "You must check every box and submit the current disclaimer version. "
+            "Missing: " + (", ".join(missing) if missing else "version mismatch")
+        )
+        return DisclaimerPage.render(next_path=nxt, error=err), 400, {
+            "Content-Type": "text/html; charset=utf-8"
+        }
+    mark_disclaimer_accepted(session)
+    return redirect(nxt)
 
 
 @app.route('/healthz')
 def healthz():
     """Lightweight health endpoint for Render health checks / uptime monitors.
     Shallow by default (no RTDB roundtrip per ping); pass ?deep=1 to also
-    verify database connectivity and report the live voting window clock.
-    When discontinued, shallow stays 200 so hosts do not thrash; body marks discontinued."""
+    verify database connectivity and report the live voting window clock."""
     release = _release_info()
     disc = is_discontinued()
     if request.args.get("deep"):
@@ -165,6 +262,7 @@ def healthz():
                 "status": "discontinued",
                 "discontinued": True,
                 "database": "not-queried",
+                "mode": product_status_header(),
                 **release,
             })
         try:
@@ -175,7 +273,13 @@ def healthz():
         try:
             clock = Database.getVotingClock()
         except Exception as e:
-            return jsonify({"status": "ok", "database": "ok", "clock_error": str(e), **release})
+            return jsonify({
+                "status": "ok",
+                "database": "ok",
+                "clock_error": str(e),
+                "mode": product_status_header(),
+                **release,
+            })
         return jsonify({
             "status": "ok",
             "database": "ok",
@@ -185,12 +289,19 @@ def healthz():
             "remainingLabel": clock.get("remainingLabel"),
             "endsAt": clock.get("endsAt"),
             "isOverride": clock.get("isOverride"),
+            "mode": product_status_header(),
             **release,
         })
     # Shallow: keep cheap for Render probes, but include revision for deploy checks
-    body = {"status": "discontinued" if disc else "ok", "revision": release["revision"]}
+    body = {
+        "status": "discontinued" if disc else "ok",
+        "revision": release["revision"],
+        "mode": product_status_header(),
+    }
     if disc:
         body["discontinued"] = True
+    if is_forced_disclaimer():
+        body["forced_disclaimer"] = True
     return jsonify(body)
 
 @app.route('/validate-token', methods=['POST'])
@@ -673,13 +784,13 @@ def dev_tools_set_window():
 
 @app.route('/robots.txt')
 def robots_txt():
-    """Public robots.txt — discontinued site: allow crawl of shut-down notice only."""
+    """Public robots.txt — demo is crawlable; disclaimer is the entry gate for humans."""
     if is_discontinued():
         body = (
             "User-agent: *\n"
             "Allow: /\n"
             "\n"
-            "# The Internet Party — SERVICE DISCONTINUED. No live governance surface.\n"
+            "# The Internet Party — hard shut-down mode.\n"
         )
         return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
     body = (
@@ -690,22 +801,23 @@ def robots_txt():
         "Disallow: /admin\n"
         "Disallow: /dev-tools/\n"
         "Disallow: /validate-token\n"
+        "Disallow: /accept-disclaimer\n"
         "\n"
         "Sitemap: https://theinternetparty.us/sitemap.xml\n"
         "\n"
-        "# The Internet Party — public ballot, library, and about pages are open.\n"
+        "# Demo of an abandoned Party No. 3 mission — forced /disclaimer for humans.\n"
     )
     return body, 200, {"Content-Type": "text/plain; charset=utf-8"}
 
 
 @app.route('/sitemap.xml')
 def sitemap_xml():
-    """Minimal public sitemap (home only when discontinued)."""
+    """Public sitemap — include disclaimer as first educational surface."""
     base = "https://theinternetparty.us"
     if is_discontinued():
         paths = ["/"]
     else:
-        paths = ["/", "/vote", "/policy", "/about", "/login", "/register", "/status"]
+        paths = ["/", "/disclaimer", "/vote", "/policy", "/about", "/login", "/register", "/status"]
     urls = "\n".join(
         f"  <url><loc>{base}{p}</loc><changefreq>daily</changefreq></url>"
         for p in paths

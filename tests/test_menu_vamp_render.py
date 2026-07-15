@@ -18,7 +18,10 @@ def render_html(render_fn, *args, **kwargs):
         return out
 
 def get_path_html(path):
+    from disclaimer_helpers import accept_disclaimer
+
     c = app.test_client()
+    accept_disclaimer(c)
     resp = c.get(path, follow_redirects=True)
     return resp.get_data(as_text=True)
 
@@ -115,14 +118,6 @@ PATH_CASES = [
 
 @pytest.mark.parametrize("path,out_name", PATH_CASES)
 def test_path_vamp(path, out_name):
-    from product_status import is_discontinued
-
-    if is_discontinued():
-        # Full give-up: HTTP paths serve ShutdownPage (no legacy menu vamp chrome).
-        html = get_path_html(path)
-        write_capture(out_name, html)
-        assert "shut down" in html.lower() or "discontinued" in html.lower()
-        return
     html = get_path_html(path)
     write_capture(out_name, html)
     assert_menu_vamp(html)

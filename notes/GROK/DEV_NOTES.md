@@ -1,19 +1,19 @@
 # DEV_NOTES — The Internet Party (Living Project Reality)
 
-**Last major update:** 2026-07-14 — **FULL GIVE-UP / PRODUCT DISCONTINUED.**  
-Public site is a shut-down surface. Mutators return 410. Sociological archive: `SOCIETAL_GIVE_UP_INVESTIGATION.md`. Sibling **TheInternet** abandoned in parallel.
+**Last major update:** 2026-07-14 — **Mission given up; demo retained behind forced disclaimer.**  
+Public site is **usable as a sandbox** after `/disclaimer` (all revelation checkboxes required). Sticky banner after accept. Hard tombstone only if `PRODUCT_DISCONTINUED=1`. Archive: `SOCIETAL_GIVE_UP_INVESTIGATION.md`. Sibling **TheInternet** still abandoned as a dojo mission.
 
 ## Current Big Picture
 
-**The Internet Party is abandoned.** Do not plan features, NPC scale runs, MetaPolicy deepenings, or categories/tags as if the party were operating.
+**Party No. 3 as a real national party is abandoned.** The **software remains** so people can inspect and use the idea with a forced fair warning — not as a claim of power.
 
 What remains:
 
-- **Shut-down UX:** `ShutdownPage.py` + `product_status.PRODUCT_DISCONTINUED` (default on) + `PlotterApp` `before_request` gate.
-- **Archival code:** Domain modules (`Database.py`, `*Page.py`, voting engine) still in tree for history; not an invitation to run a live polity.
-- **Investigation archive:** `notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md` — societal realizations, key conflicts, exploration pathway.
-- **What-we-learned give-up handoff:** `notes/GROK/handoffs/2026-07-14-what-we-learned-give-up.md` — closing handoff with no work to continue (for `/init`).
-- **Handoffs:** Pre-2026-07-14 handoffs describe how the engine was built; they are historical, not a backlog.
+- **Forced disclaimer demo:** `DisclaimerPage.py` + `product_status` (`FORCED_DISCLAIMER` default on) + `PlotterApp` gate; after accept, full vote/draft/library/operator surfaces work.
+- **Optional hard shut-down:** `PRODUCT_DISCONTINUED=1` → `ShutdownPage` + 410 mutators.
+- **Investigation archive:** `notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md`.
+- **What-we-learned handoff:** `notes/GROK/handoffs/2026-07-14-what-we-learned-give-up.md`.
+- **Handoffs:** Pre-give-up docs are historical; do not treat as “grow the party” backlog.
 
 ### Key realizations that closed the project
 

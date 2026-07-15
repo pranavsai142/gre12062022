@@ -1,3 +1,11 @@
+
+# Allow `import disclaimer_helpers` from tests/
+import sys
+from pathlib import Path as _P
+_tests_dir = str(_P(__file__).resolve().parent)
+if _tests_dir not in sys.path:
+    sys.path.insert(0, _tests_dir)
+
 """
 E2E test configuration for The Internet Party (Playwright + pytest).
 - Reuses the main website at localhost:5000 (or --base-url)

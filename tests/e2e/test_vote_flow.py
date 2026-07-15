@@ -7,23 +7,12 @@ radio defaults → cast ballot → already-voted state.
 """
 
 import pytest
-from product_status import is_discontinued
-
-pytestmark = [
-    pytest.mark.e2e,
-    pytest.mark.skipif(
-        is_discontinued(),
-        reason="product discontinued — e2e governance flows retired with full give-up",
-    ),
-]
-
 
 import uuid
 import pytest
 from playwright.sync_api import Page, expect
 
 from tests.conftest import set_current_window_override, make_npc
-
 
 @pytest.mark.e2e
 def test_vote_page_public_preview_shows_ballot(page: Page, base_url: str, test_window_id):
@@ -39,7 +28,6 @@ def test_vote_page_public_preview_shows_ballot(page: Page, base_url: str, test_w
         expect(page.locator("body")).to_contain_text(test_window_id)
     finally:
         _cleanup_policy(policy_id)
-
 
 @pytest.mark.e2e
 def test_login_vote_abstain_default_submit_and_already_voted(page: Page, base_url: str, test_window_id):
@@ -79,7 +67,6 @@ def test_login_vote_abstain_default_submit_and_already_voted(page: Page, base_ur
         expect(page.locator("#submitBallot")).to_have_count(0)
     finally:
         _cleanup_policy(policy_id)
-
 
 def _cleanup_policy(policy_id: str):
     try:

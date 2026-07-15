@@ -45,9 +45,11 @@ def test_validate_user_tolerates_bad_session_shapes():
 @pytest.fixture
 def client():
     from PlotterApp import app
+    from disclaimer_helpers import accept_disclaimer
 
     app.config["TESTING"] = True
     with app.test_client() as c:
+        accept_disclaimer(c)
         yield c
 
 
@@ -57,16 +59,16 @@ def test_security_headers_present(client):
     assert r.headers.get("X-Content-Type-Options") == "nosniff"
     assert r.headers.get("X-Frame-Options") == "SAMEORIGIN"
     assert "strict-origin" in (r.headers.get("Referrer-Policy") or "")
+    assert r.headers.get("X-Product-Status") == "demo-disclaimer"
 
 
 def test_missing_detail_returns_http_404(client):
-    """Give-up: all former product HTML (including detail) is the shut-down page."""
     r = client.get("/detail/definitely-not-a-real-policy-id-zzz")
-    assert r.status_code == 200
-    assert b"shut down" in r.data.lower() or b"discontinued" in r.data.lower()
+    assert r.status_code == 404
+    assert b"not found" in r.data.lower()
     r2 = client.get("/detail/amendment/definitely-not-a-real-amendment-id-zzz")
-    assert r2.status_code == 200
-    assert b"shut down" in r2.data.lower() or b"discontinued" in r2.data.lower()
+    assert r2.status_code == 404
+    assert b"not found" in r2.data.lower()
 
 
 def test_session_cookie_config():
@@ -77,12 +79,16 @@ def test_session_cookie_config():
 
 
 def test_reset_page_is_functional_not_stub(client):
-    """Give-up: /reset is discontinued shut-down HTML (no live reset flow)."""
+    """Password reset must be a real Firebase email flow, not a placeholder card."""
     r = client.get("/reset")
     assert r.status_code == 200
     html = r.data.decode("utf-8")
-    assert "shut down" in html.lower() or "discontinued" in html.lower()
-    assert "data-shutdown-title" in html
+    assert "contact support for now" not in html.lower()
+    assert "reset.js" in html
+    assert 'id="resetButton"' in html
+    assert 'id="email"' in html
+    assert "firebase-auth" in html
+    assert "data-voting-clock" in html
 
 
 def test_reset_js_sends_firebase_reset_email():

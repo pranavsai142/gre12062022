@@ -8,28 +8,16 @@ MetaPolicy enforcement tests (server-side teeth, via the real HTTP surface).
 """
 
 import pytest
-from product_status import is_discontinued
-
-pytestmark = [
-    pytest.mark.e2e,
-    pytest.mark.skipif(
-        is_discontinued(),
-        reason="product discontinued — e2e governance flows retired with full give-up",
-    ),
-]
-
 
 import pytest
 
 from tests.conftest import set_current_window_override, make_npc
-
 
 def _expect_rejected(fn, *args, needle="MetaPolicy"):
     with pytest.raises(RuntimeError) as e:
         fn(*args)
     assert "400" in str(e.value)
     assert needle.lower() in str(e.value).lower()
-
 
 @pytest.mark.e2e
 def test_title_and_description_limits_enforced_server_side(base_url: str):
@@ -46,7 +34,6 @@ def test_title_and_description_limits_enforced_server_side(base_url: str):
     assert created.get("success") is True
     draft_id = created["id"]
     npc._post("/remove-draft", {"id": draft_id})
-
 
 @pytest.mark.e2e
 def test_ballot_rejected_for_non_current_window(base_url: str, test_window_id):
