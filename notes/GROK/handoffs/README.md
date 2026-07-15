@@ -2,6 +2,10 @@
 
 Dated handoff documents are the **single source of truth** for project state that survives `~/.grok` flushes and travels with the repository.
 
+> **2026-07-14:** Project **given up**. Prefer  
+> [`2026-07-14-what-we-learned-give-up.md`](./2026-07-14-what-we-learned-give-up.md)  
+> (learnings close — **no work to continue**) and the investigation archive over any pre-abandonment feature handoff.
+
 ## Naming
 
 - `YYYY-MM-DD-<topic>-handoff.md`
@@ -10,7 +14,8 @@ Dated handoff documents are the **single source of truth** for project state tha
 ## How It Works
 
 - `/done` creates a new handoff at the end of meaningful work (or mid-plan checkpoints).
-- A handoff contains: what was accomplished, key decisions, hard lessons, current focus, open questions, and what the next session should start on.
+- A handoff usually contains: what was accomplished, key decisions, hard lessons, current focus, open questions, and what the next session should start on.
+- A **give-up** handoff may instead carry only learnings and an explicit **no next build work** instruction.
 - `/init` makes you read the most recent 1–3 handoffs + the two driver files.
 
 ## Important

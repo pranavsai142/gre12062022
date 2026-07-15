@@ -12,6 +12,7 @@ What remains:
 - **Shut-down UX:** `ShutdownPage.py` + `product_status.PRODUCT_DISCONTINUED` (default on) + `PlotterApp` `before_request` gate.
 - **Archival code:** Domain modules (`Database.py`, `*Page.py`, voting engine) still in tree for history; not an invitation to run a live polity.
 - **Investigation archive:** `notes/GROK/SOCIETAL_GIVE_UP_INVESTIGATION.md` — societal realizations, key conflicts, exploration pathway.
+- **What-we-learned give-up handoff:** `notes/GROK/handoffs/2026-07-14-what-we-learned-give-up.md` — closing handoff with no work to continue (for `/init`).
 - **Handoffs:** Pre-2026-07-14 handoffs describe how the engine was built; they are historical, not a backlog.
 
 ### Key realizations that closed the project
